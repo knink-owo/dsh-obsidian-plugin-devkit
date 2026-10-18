@@ -7,7 +7,7 @@ license: MIT
 
 # Obsidian plugin development
 
-The eight `obsidian_devkit_*` tools do the mechanical work. This skill carries
+The nine `obsidian_devkit_*` tools do the mechanical work. This skill carries
 the judgement: what the official rules are, in which order to run things, and
 why a zero exit code is not proof that a plugin works.
 
@@ -35,7 +35,9 @@ why a zero exit code is not proof that a plugin works.
      default export, a wrong prototype chain and import-time crashes.
    - L3 real vault: `deploy` writes the plugin and the app actually lists it;
      `status`/`reload` proof is read-only and reports "unknown" when the app
-     cannot be reached.
+     cannot be reached. For repeatable UI behaviour, `obsidian_devkit_e2e`
+     scaffolds a sandboxed WebdriverIO harness (isolated config dir + throwaway
+     vault copy) — it writes and audits the harness but never runs it.
    - L4 human check: the UI behaviour itself. Never claim L4 without a person
      or a screenshot.
 6. **Version + release** — `obsidian_devkit_version` syncs manifest.json,
@@ -56,6 +58,7 @@ why a zero exit code is not proof that a plugin works.
 | `obsidian_devkit_status` | read-only environment audit, deploy drift |
 | `obsidian_devkit_reload` | CLI reload/rescan/enable/disable + read-only verify |
 | `obsidian_devkit_test` | L2 isolated bundle smoke: load, instantiate, onload/unload |
+| `obsidian_devkit_e2e` | sandboxed WebdriverIO e2e harness: init/status, never runs the suite |
 
 ## Hard rules
 

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Obsidian Plugin Devkit",
-    "description": "Scaffold, build, validate, version, deploy and live-reload Obsidian community plugins, smoke-test the built bundle in isolation, and follow the official submission rules before a project is written, plus a bundled development-guideline skill."
+    "description": "Scaffold, build, validate, version, deploy and live-reload Obsidian community plugins, smoke-test the built bundle in isolation, generate a sandboxed WebdriverIO end-to-end harness, and follow the official submission rules before a project is written, plus a bundled development-guideline skill."
   }
 }

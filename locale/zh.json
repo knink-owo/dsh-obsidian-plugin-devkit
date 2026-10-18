@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Obsidian 插件开发工具",
-    "description": "为 Obsidian 社区插件提供脚手架、构建、校验、版本同步、部署到真实 vault、运行中重载与隔离冒烟测试，写盘前先按官方提交规则检查，并附带插件开发指南 skill。"
+    "description": "为 Obsidian 社区插件提供脚手架、构建、校验、版本同步、部署到真实 vault、运行中重载、隔离冒烟测试与沙箱 WebdriverIO e2e 脚手架，写盘前先按官方提交规则检查，并附带插件开发指南 skill。"
   }
 }

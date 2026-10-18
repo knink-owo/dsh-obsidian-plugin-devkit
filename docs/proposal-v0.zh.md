@@ -337,3 +337,37 @@ schema must be a JSON Schema of 'type: "object"', got 'type: null'.
 **真实 e2e**：对 `.devkit/demo`（M1 scaffold + esbuild 产物）跑 `scenario: unload` → PASS（2116 字节 bundle；模块执行/CommonJS/默认导出/继承 Plugin/实例化/onload/onunload 全通过）。
 
 **M2 剩余**：`e2e`（WebdriverIO + wdio-obsidian-service，独立 config dir、vault 副本）、npm 发布（M4）。
+
+## 14. M2 实施记录（第四批：sandboxed e2e 脚手架 `e2e` 工具，0.5.0）
+
+**版本**：`0.5.0`；注册工具由 8 个增至 9 个（新增 `obsidian_devkit_e2e`，`action: init | status`）。
+
+**能力边界**：工具只生成与审计 e2e 脚手架，**不运行 e2e**。运行套件意味着下载 Obsidian/Electron（数百 MB）并打开一个真实渲染器窗口，这是人/CI 的决定，不是工具调用的副作用。
+
+**生成的 harness**：
+
+| 文件 | 用途 |
+| --- | --- |
+| `wdio.conf.mts` | WebdriverIO 9 配置：`browserName: "obsidian"`、`wdio:obsidianOptions`（`plugins: ["."]`、`vault: "e2e/vaults/simple"`、`installerVersion`）、`services: ["obsidian"]`、`cacheDir: .obsidian-cache`、mocha 60s |
+| `e2e/specs/plugin.e2e.ts` | 生成的冒烟 spec：验证插件在干净 vault 中加载（`browser.execute` 查 `app.plugins`）；若入口源码检测到 `addCommand({ id })` 则追加一条执行 `<pluginId>:<commandId>` 的用例 |
+| `e2e/vaults/simple/` | 最小 fixture vault（`.obsidian/app.json`、`appearance.json`、`Welcome.md`）；服务每次运行复制一份，不污染真实 vault |
+| `e2e/tsconfig.json` | 只给 spec 做类型检查（`@wdio/globals/types`、`@wdio/mocha-framework`、`wdio-obsidian-service`），不进入插件 `tsc -noEmit` 的 include，避免未装依赖时污染构建 |
+| `e2e/README.md` | 运行方式、下载与无头 CI 说明 |
+| `package.json` | 合并 8 个 devDependencies（`wdio-obsidian-service`、`wdio-obsidian-reporter`、`@wdio/cli`、`@wdio/local-runner`、`@wdio/mocha-framework`、`@wdio/globals`、`mocha`、`@types/mocha`）与 `scripts["test:e2e"]`，已存在的版本/脚本绝不覆盖 |
+| `.gitignore` | 追加 `.obsidian-cache/`（下载的 Obsidian 构建不进 git） |
+
+**幂等与安全**：`init` 对每个文件区分 written/overwritten/unchanged/conflict；默认 `overwrite: false`，已存在且内容不同即报冲突（ok=false）而不覆盖。`status` 只读审计：manifest 可识别、wdio 配置、`.e2e.ts` 用例、fixture vault、e2e tsconfig、devDependencies、`test:e2e` 脚本、`node_modules/wdio-obsidian-service`、`.gitignore`；缺依赖时给出明确的 `pnpm install` 下一步。
+
+**设计决策**：
+
+1. **不执行套件**：与 `build`（一次性子进程）、`smoke`（纯 Node VM）不同，e2e 需要 GUI 与大量下载；工具只把 harness 做到“reviewable + 可重复”，运行交给人和 CI。
+2. **不碰真实 vault / 不抢焦点**：wdio-obsidian-service 本身用独立 config dir + vault 副本；报告里显著写明这一点。
+3. **类型隔离**：e2e 的 tsconfig 独立，根 tsconfig 的 `include` 仍是 `src/**/*.ts`，因此 `init` 之后、`pnpm install` 之前 `npm run build` 不会因缺少 wdio 类型而失败。
+4. **命令检测降级**：入口里找不到 `addCommand id` 时，spec 只验证“插件加载”，并在报告 warning 与 spec 注释里提示用户补真实断言，而不是猜一个命令 id。
+5. **依赖合并非破坏**：只补缺失键；用户已固定的版本、已有脚本保留。
+
+**测试**：`npm test` 94 项全过（新增 `test/e2e.test.mjs` 8 项：命令检测、package.json 合并/非法 JSON、.gitignore 幂等、init 全量写入与二次幂等、冲突与 overwrite、status 检查与依赖安装后转 PASS、缺 manifest 拒绝）。`plugin.test.mjs` 更新为 9 工具断言。
+
+**真实 e2e（工具层）**：对 `.devkit/demo`（插件 id `demo-hub`，构建产物已存在）跑 `action: init` → PASS，写 9 个文件、0 冲突；生成的 spec 正确带 `demo-hub` 与 `demo-hub:open-modal`；`action: status` → 正确 FAIL 于“依赖未安装”，其余 8 项 PASS。
+
+**M2 状态**：deploy / status / reload、skill + 上下文注入、L2 冒烟、sandboxed e2e 脚手架全部完成（v0.5.0，94 tests）。M2 剩余仅“真正跑一次 WebdriverIO 套件”（需要用户本机/CI 网络与显示环境）与 npm 发布（M4）。

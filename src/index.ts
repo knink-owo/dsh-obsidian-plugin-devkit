@@ -10,6 +10,7 @@ import { Fs } from "./fs.js";
 import { buildPlugin } from "./build.js";
 import { registerDevContext } from "./context.js";
 import { deployPlugin } from "./deploy.js";
+import { E2E_ACTIONS, runE2e, type E2eAction } from "./e2e.js";
 import { reloadActionValues, reloadLive, type ReloadAction } from "./reload.js";
 import { scaffold } from "./scaffold.js";
 import { registerSkill } from "./skill.js";
@@ -118,6 +119,16 @@ const TEST_DESCRIPTION =
   "hangs. Never a substitute for L3 (real vault) and L4 (human eyes): a pass only proves the bundle loads " +
   "against stubs. The bundle code does execute with Node builtins available, so only smoke-test code you " +
   "would actually install.";
+
+const E2E_DESCRIPTION =
+  "Set up or audit a sandboxed end-to-end harness for an Obsidian plugin, wired to " +
+  "wdio-obsidian-service (WebdriverIO 9). action=init writes an idempotent, reviewable harness: " +
+  "wdio.conf.mts (isolated config dir, throwaway vault copy, downloadable Obsidian versions, plugin " +
+  "installed from the project), a generated smoke spec under e2e/specs, a fixture vault, e2e/tsconfig.json, " +
+  "e2e/README.md, plus merged package.json devDependencies and a test:e2e script; existing files are " +
+  "reported as conflicts unless overwrite is true. action=status audits the harness and reports the exact " +
+  "next command. It never runs the suite: the first run downloads Obsidian (hundreds of MB) and opens a " +
+  "sandboxed window, which is a human/CI decision. Your real vaults and running Obsidian are never touched.";
 
 function readCall(exec: ToolRunContext | undefined, ctx: DevkitContext): FsCall {
   const session = exec?.agent?.session;
@@ -550,6 +561,48 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
     },
   };
 
+  const e2eTool: ToolDefinition = {
+    name: "obsidian_devkit_e2e",
+    description: E2E_DESCRIPTION,
+    parameters: objectSchema({
+      projectDir: {
+        type: "string",
+        required: true,
+        description: "Plugin project directory (workspace-relative or absolute).",
+      },
+      action: {
+        type: "string",
+        enum: [...E2E_ACTIONS],
+        description:
+          "init (write or update the sandboxed harness; merge deps/scripts; report conflicts) or status (read-only audit). Default init.",
+      },
+      overwrite: {
+        type: "boolean",
+        description: "Replace harness files that already exist with different content (default false; conflicts are reported).",
+      },
+    }),
+    output: textOutput,
+    isConcurrencySafe: () => false,
+    async execute(args, exec) {
+      const projectDir = stringArg(args, "projectDir");
+      if (projectDir === undefined) return "E2E setup requires a non-empty projectDir parameter.";
+      const rawAction = stringArg(args, "action") ?? "init";
+      if (!E2E_ACTIONS.includes(rawAction as E2eAction)) {
+        return `action must be one of: ${E2E_ACTIONS.join(", ")}.`;
+      }
+      const result = await runE2e(
+        fs,
+        {
+          projectDir,
+          action: rawAction as E2eAction,
+          overwrite: booleanArg(args, "overwrite") ?? false,
+        },
+        readCall(exec, ctx),
+      );
+      return result.report;
+    },
+  };
+
   return [
     scaffoldTool,
     buildTool,
@@ -559,6 +612,7 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
     statusTool,
     reloadTool,
     testTool,
+    e2eTool,
   ];
 }
 

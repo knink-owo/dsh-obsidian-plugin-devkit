@@ -22,7 +22,7 @@ extending the stubbed `Plugin`. This catches import-time crashes, ESM output,
 missing exports and wrong module format. It does not prove real-API
 compatibility — the bundle runs against stubs, not Obsidian.
 
-## L3 — real vault (tools: `deploy`, `status`, `reload`)
+## L3 — real vault (tools: `deploy`, `status`, `reload`, `e2e`)
 
 - `deploy` writes `main.js`, `manifest.json`, `styles.css` into
   `<vault>/.obsidian/plugins/<id>/` and merges the id into
@@ -33,6 +33,13 @@ compatibility — the bundle runs against stubs, not Obsidian.
 - Reload/rescan paths need Obsidian running with the CLI enabled
   (>= 1.12.4). If any of that is missing, report the limitation; never open the
   app yourself and never pretend it worked.
+- `obsidian_devkit_e2e` (action `init`) writes a reviewable
+  `wdio-obsidian-service` harness into the project: `wdio.conf.mts`, a
+  generated spec, a fixture vault, `e2e/tsconfig.json`, merged devDependencies
+  and a `test:e2e` script. Action `status` audits it read-only. The tool never
+  runs the suite (first run downloads Obsidian and opens a window): hand the
+  command to a human or CI, and remember the harness uses an isolated config
+  dir and a throwaway vault copy, not the developer's vaults.
 
 ## L4 — human/UI
 
