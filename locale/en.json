@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Obsidian Plugin Devkit",
-    "description": "Scaffold, build, validate and version Obsidian community plugins, with the official submission rules enforced before a project is written."
+    "description": "Scaffold, build, validate, version, deploy and live-reload Obsidian community plugins, with the official submission rules enforced before a project is written."
   }
 }

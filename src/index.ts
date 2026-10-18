@@ -1,14 +1,17 @@
 /**
  * Cordis plugin entry.
  *
- * A host-only bundle: it registers four model-facing tools through `ctx.tools`
- * and nothing else. No UI half, no RPC, no background process. Build steps are
- * one-shot subprocesses; nothing keeps running after a tool returns.
+ * A host-only bundle: it registers model-facing tools through `ctx.tools`
+ * and nothing else. No UI half, no RPC, no background process. Build and CLI
+ * steps are one-shot subprocesses; nothing keeps running after a tool returns.
  */
 import { readAsset } from "./fs.js";
 import { Fs } from "./fs.js";
 import { buildPlugin } from "./build.js";
+import { deployPlugin } from "./deploy.js";
+import { reloadActionValues, reloadLive, type ReloadAction } from "./reload.js";
 import { scaffold } from "./scaffold.js";
+import { statusReport } from "./status.js";
 import { validateProject } from "./validate.js";
 import { bumpVersion } from "./version.js";
 import { compareSemver } from "./naming.js";
@@ -29,16 +32,22 @@ export const inject = ["tools", "fs"];
 export interface DevkitConfig {
   /** minAppVersion used when the model does not pass one. */
   defaultMinAppVersion: string;
-  /** Workspace-relative directory reserved for a development vault (M2 deploy target). */
+  /** Workspace-relative directory reserved for a development vault (deploy target). */
   testVault: string;
   /** Package manager used to run project build scripts when no lockfile decides. */
   packageManager: string;
+  /** Obsidian CLI invocation; `"obsidian"` means "resolve through PATH". */
+  obsidianCli: string;
+  /** Probe the running app after deploy (read-only) to report what is actually loaded. */
+  probeActive: boolean;
 }
 
 export const DEFAULT_CONFIG: DevkitConfig = {
   defaultMinAppVersion: "1.13.0",
   testVault: "dev-vault",
   packageManager: "pnpm",
+  obsidianCli: "obsidian",
+  probeActive: true,
 };
 
 export const textOutput: ToolOutput = {
@@ -73,6 +82,31 @@ const VERSION_DESCRIPTION =
   "Synchronize the release version across manifest.json (source of truth Obsidian loads), package.json " +
   "and versions.json, optionally setting minAppVersion. Rejects non-semver input. Reports exactly which " +
   "files changed. It does not commit or tag; remind the user to git add the changed files.";
+
+const DEPLOY_DESCRIPTION =
+  "Deploy a built Obsidian plugin into a real vault: copies main.js, manifest.json and styles.css into " +
+  "`<vault>/.obsidian/plugins/<id>/`, merges (never replaces) the id in community-plugins.json when enable " +
+  "is true, and records the deployment in `<vault>/.dsh/devkit.json`. Needs no running Obsidian and no " +
+  "developer mode. By default targets a workspace-relative dev vault (created on demand); pass vault to " +
+  "deploy into a registered vault by name or path. dryRun=true lists the writes without touching anything. " +
+  "The 'active' line is only a read-only probe: it never opens or focuses an Obsidian window and reports " +
+  "'unknown' when it cannot know.";
+
+const STATUS_DESCRIPTION =
+  "Audit the Obsidian plugin development environment without changing anything: whether Obsidian is " +
+  "running, whether the official CLI is available (and its version), the registered vaults, the project's " +
+  "build state and dependencies, where the plugin is currently deployed across vaults, deploy drift " +
+  "between the local build and deployed main.js, and what the running app actually sees. Every section " +
+  "degrades to 'unknown' with a reason instead of guessing. Use it when a plugin does not load.";
+
+const RELOAD_DESCRIPTION =
+  "Act on a running Obsidian through the official CLI: reload a plugin after a build (plugin:reload), " +
+  "rescan the plugins folder so newly deployed plugins are discovered (eval app.plugins.loadManifests()), " +
+  "or enable/disable the plugin id. Verifies the result with a read-only query and reports CLI quirks " +
+  "honestly (the CLI exits 0 on errors and prints nothing when it hangs, so a timeout is reported as such). " +
+  "Requires Obsidian >= 1.12.4 with the CLI enabled in Settings -> General and the app already running; " +
+  "it never cold-starts the app, never steals focus, and never falls back to non-official window tricks. " +
+  "Commands act on the frontmost vault; switch Obsidian to the target vault first.";
 
 function readCall(exec: ToolRunContext | undefined, ctx: DevkitContext): FsCall {
   const session = exec?.agent?.session;
@@ -316,7 +350,148 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
     },
   };
 
-  return [scaffoldTool, buildTool, validateTool, versionTool];
+  const deployTool: ToolDefinition = {
+    name: "obsidian_devkit_deploy",
+    description: DEPLOY_DESCRIPTION,
+    parameters: objectSchema({
+      projectDir: {
+        type: "string",
+        required: true,
+        description: "Built plugin project directory (workspace-relative or absolute). Run build first.",
+      },
+      vault: {
+        type: "string",
+        description:
+          "Target vault: a registered vault name, a vault path, or a path to a vault folder. Omit to use the workspace development vault.",
+      },
+      pluginId: {
+        type: "string",
+        description: "Plugin id override; defaults to manifest.json id. Must match the manifest when given.",
+      },
+      enable: {
+        type: "boolean",
+        description:
+          "Add the plugin id to community-plugins.json so Obsidian loads it (default true). This does not bypass Restricted mode or vault trust.",
+      },
+      createVault: {
+        type: "boolean",
+        description:
+          "Allow creating the workspace development vault (and its .obsidian/ folder) when vault is omitted. Never applies to explicit external paths (default true).",
+      },
+      dryRun: {
+        type: "boolean",
+        description: "Report what would be written without writing anything (default false).",
+      },
+    }),
+    output: textOutput,
+    isConcurrencySafe: () => false,
+    async execute(args, exec) {
+      const projectDir = stringArg(args, "projectDir");
+      if (projectDir === undefined) return "Deploy requires a non-empty projectDir parameter.";
+      const result = await deployPlugin(
+        fs,
+        {
+          projectDir,
+          vault: stringArg(args, "vault"),
+          pluginId: stringArg(args, "pluginId"),
+          enable: booleanArg(args, "enable") ?? true,
+          createVault: booleanArg(args, "createVault") ?? true,
+          dryRun: booleanArg(args, "dryRun") ?? false,
+          testVault: config.testVault,
+          probeActive: config.probeActive,
+          cliCommand: config.obsidianCli,
+        },
+        readCall(exec, ctx),
+      );
+      return result.report;
+    },
+  };
+
+  const statusTool: ToolDefinition = {
+    name: "obsidian_devkit_status",
+    description: STATUS_DESCRIPTION,
+    parameters: objectSchema({
+      projectDir: {
+        type: "string",
+        description: "Optional plugin project directory to include project, build and deployment state for.",
+      },
+      vault: {
+        type: "string",
+        description: "Optional vault name or path to check first (in addition to all registered vaults).",
+      },
+    }),
+    output: textOutput,
+    isConcurrencySafe: () => true,
+    async execute(args, exec) {
+      const result = await statusReport(
+        fs,
+        {
+          projectDir: stringArg(args, "projectDir"),
+          vault: stringArg(args, "vault"),
+          testVault: config.testVault,
+          cliCommand: config.obsidianCli,
+        },
+        readCall(exec, ctx),
+      );
+      return result.report;
+    },
+  };
+
+  const reloadTool: ToolDefinition = {
+    name: "obsidian_devkit_reload",
+    description: RELOAD_DESCRIPTION,
+    parameters: objectSchema({
+      action: {
+        type: "string",
+        enum: reloadActionValues(),
+        required: true,
+        description:
+          "reload (plugin:reload after a build/deploy), rescan (make Obsidian discover newly deployed plugin folders), enable, or disable.",
+      },
+      projectDir: {
+        type: "string",
+        description: "Plugin project directory; used to read the plugin id from manifest.json when pluginId is omitted.",
+      },
+      pluginId: {
+        type: "string",
+        description: "Plugin id to act on. Required when projectDir does not resolve a manifest id.",
+      },
+      vault: {
+        type: "string",
+        description:
+          "Target vault name to pass as vault=<name>. Window-level commands act on the frontmost vault, so switch Obsidian manually when in doubt.",
+      },
+      timeoutMs: {
+        type: "number",
+        description: "CLI timeout in milliseconds (default 30000). A timeout is reported, not retried blindly.",
+      },
+    }),
+    output: textOutput,
+    isConcurrencySafe: () => false,
+    async execute(args, exec) {
+      const rawAction = stringArg(args, "action") ?? "reload";
+      const actions = reloadActionValues();
+      if (!actions.includes(rawAction as ReloadAction)) {
+        return `action must be one of: ${actions.join(", ")}.`;
+      }
+      const timeout = typeof args.timeoutMs === "number" && args.timeoutMs > 0 ? args.timeoutMs : 30_000;
+      const result = await reloadLive(
+        fs,
+        {
+          projectDir: stringArg(args, "projectDir"),
+          pluginId: stringArg(args, "pluginId"),
+          vault: stringArg(args, "vault"),
+          action: rawAction as ReloadAction,
+          timeoutMs: timeout,
+          cliCommand: config.obsidianCli,
+        },
+        readCall(exec, ctx),
+      );
+      return result.report;
+    },
+  };
+
+  return [scaffoldTool, buildTool, validateTool, versionTool, deployTool, statusTool, reloadTool];
 }
 
 export function apply(ctx: DevkitContext, config?: Partial<DevkitConfig>): void {

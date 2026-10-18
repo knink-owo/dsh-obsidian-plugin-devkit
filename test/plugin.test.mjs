@@ -7,16 +7,21 @@ test("plugin exposes the expected cordis identity", () => {
   assert.equal(name, "obsidian-plugin-devkit");
   assert.deepEqual(inject, ["tools", "fs"]);
   assert.equal(DEFAULT_CONFIG.defaultMinAppVersion, "1.13.0");
+  assert.equal(DEFAULT_CONFIG.obsidianCli, "obsidian");
+  assert.equal(DEFAULT_CONFIG.probeActive, true);
 });
 
-test("apply registers exactly the four M1 tools", () => {
+test("apply registers exactly the seven devkit tools", () => {
   const registered = [];
   apply({ tools: { register: (tool) => registered.push(tool) } });
   assert.deepEqual(
     registered.map((tool) => tool.name).sort(),
     [
       "obsidian_devkit_build",
+      "obsidian_devkit_deploy",
+      "obsidian_devkit_reload",
       "obsidian_devkit_scaffold",
+      "obsidian_devkit_status",
       "obsidian_devkit_validate",
       "obsidian_devkit_version",
     ],
@@ -57,6 +62,17 @@ test("tools reject empty required string arguments with a readable message", asy
     await byName.obsidian_devkit_version.execute({ projectDir: "x" }, undefined),
     /requires non-empty projectDir and version/i,
   );
+  assert.match(
+    await byName.obsidian_devkit_deploy.execute({ projectDir: "" }, undefined),
+    /requires a non-empty projectDir/i,
+  );
+});
+
+test("reload rejects an unknown action before touching the CLI", async () => {
+  const registered = [];
+  apply({ tools: { register: (tool) => registered.push(tool) } });
+  const tool = registered.find((candidate) => candidate.name === "obsidian_devkit_reload");
+  assert.match(await tool.execute({ action: "explode" }, undefined), /action must be one of/);
 });
 
 test("validate fails softly on a missing directory", async () => {

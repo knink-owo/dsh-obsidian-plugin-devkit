@@ -246,3 +246,37 @@ schema must be a JSON Schema of 'type: "object"', got 'type: null'.
 - 手写 `ctx.tools.register` 时 `parameters` 必须是 `{ type: "object", properties, required }`；扁平 DSL 只属于 `defineTool` helper。
 - `isConcurrencySafe` 是函数 `(args) => boolean`，`timeoutMs` 是毫秒数，`output.schema` 是**结果值**的 JSON Schema。
 - 安装/替换插件后用 `plugin_manager list_plugins` 看 `fiberPhase === "active"`；`application: failed` 时先按 `nextStep` 修。
+
+---
+
+## 11. M2 实施记录（2026-10-18，第一批：deploy / status / reload）
+
+**版本**：`0.2.0`（未发布 npm；本地 link 安装）。
+
+**新增工具（4 → 7）**：
+
+| 工具 | 通道 | 关键约束 |
+| --- | --- | --- |
+| `obsidian_devkit_deploy` | 直接写文件（无需运行 Obsidian） | 只写 `main.js`/`manifest.json`/`styles.css`；`community-plugins.json` 只合并、不改写已有条目；`.dsh/devkit.json` 记录绑定；`dryRun` 预览；默认写入工作区 `dev-vault/`（可创建），显式 vault 必须是真实 vault（含 `.obsidian/`）。 |
+| `obsidian_devkit_status` | 只读 | 进程/CLI 探测、vault 注册表、项目构建状态、各 vault 部署位置、本地构建与已部署 `main.js` 的 sha256 漂移、运行中 app 实际看到的版本/启用状态；不可知项一律 `unknown` + 原因。 |
+| `obsidian_devkit_reload` | 官方 CLI（需运行中 Obsidian） | `plugin:reload` / `eval app.plugins.loadManifests()`（rescan）/ `plugin:enable` / `plugin:disable`；报告 CLI 静默失败（exit 0 但 `Error:`）、空输出（可能挂起）、超时；只读查询二次验证；前台 vault 不一致时警告。 |
+
+**新增模块**：`src/cli.ts`（CLI 发现/命令分类/插件信息解析）、`src/vault.ts`（注册表、vault 解析与安全规则）、`src/deploy.ts`、`src/status.ts`、`src/reload.ts`；`src/index.ts` 注册 7 个工具并新增 config `obsidianCli`、`probeActive`。
+
+**CLI 实测事实（Obsidian 1.14.4 / Windows）**：
+
+- `Obsidian.com version` → `1.14.4 (installer 1.14.4)`，exit 0；`where obsidian` 能解析到安装目录的 `Obsidian.com`。
+- 首次探测有坑：应用未运行时 `obsidian version` 会**冷启动** Obsidian，因此工具先用 `tasklist` 判定进程，未运行就不探测。
+- 错误也是 exit 0：`plugin:reload id=不存在` 输出 `Error: Plugin "..." not found.`；禁用插件 reload 输出 `Error: Plugin "..." is not enabled.`。工具按输出分类为 `silent-error`。
+- 窗口级命令（`plugin:*`、`dev:*`、`eval`）作用于**前台窗口 vault**，`vault=` 只对版本/vault 列表等命令生效；工具绝不 `show()/focus()` 抢焦点。
+- `plugins:enabled format=json` 返回数组，可解析出启用 id 列表；`plugin id=<id>` 返回 tab 分隔的 key/value（id/name/version/enabled/...）。
+
+**设计决策**：
+
+1. **两条通道、报告不混用**：文件级部署不需要 CLI；CLI 只用于实时动作，CLI 不可用时明确拒绝并降级建议，不伪造结果。
+2. **不冷启动、不抢焦点、不替用户做信任决定**：`enable` 只表示「id 写入 community-plugins.json」，受限模式/vault 信任/重启时机仍由 Obsidian 决定。
+3. **可测试性**：CLI 结果、进程判定、vault 注册表、插件信息读取全部通过 deps 注入，测试不 spawn 真实 Obsidian。
+
+**测试**：`npm test` 64 项全过（新增 `vault/cli/deploy/status/reload` 五个套件；`plugin.test.mjs` 更新为 7 工具断言）。`deploy` 覆盖写入/合并/幂等/`dryRun`/默认 dev-vault 创建/`pluginId` 冲突；`reload` 覆盖未运行、CLI 不可用、静默错误、超时、前台 vault 警告。
+
+**M2 剩余**：只读 `test`（L2 冒烟：加载 `main.js` 于隔离 vm、检查 `onload` 存在）、`e2e`（WebdriverIO + wdio-obsidian-service，独立 config dir）、`obsidian-plugin-dev` skill + `doc/harness.default.md` 上下文注入、npm 发布（M4）。

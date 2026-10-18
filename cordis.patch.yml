@@ -8,4 +8,5 @@
         defaultMinAppVersion: '1.13.0'
         testVault: dev-vault
         packageManager: pnpm
-        enableCli: true
+        obsidianCli: obsidian
+        probeActive: true
