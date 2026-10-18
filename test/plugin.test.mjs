@@ -11,7 +11,7 @@ test("plugin exposes the expected cordis identity", () => {
   assert.equal(DEFAULT_CONFIG.probeActive, true);
 });
 
-test("apply registers exactly the seven devkit tools", () => {
+test("apply registers exactly the eight devkit tools", () => {
   const registered = [];
   apply({ tools: { register: (tool) => registered.push(tool) } });
   assert.deepEqual(
@@ -22,6 +22,7 @@ test("apply registers exactly the seven devkit tools", () => {
       "obsidian_devkit_reload",
       "obsidian_devkit_scaffold",
       "obsidian_devkit_status",
+      "obsidian_devkit_test",
       "obsidian_devkit_validate",
       "obsidian_devkit_version",
     ],
@@ -66,6 +67,10 @@ test("tools reject empty required string arguments with a readable message", asy
     await byName.obsidian_devkit_deploy.execute({ projectDir: "" }, undefined),
     /requires a non-empty projectDir/i,
   );
+  assert.match(
+    await byName.obsidian_devkit_test.execute({ projectDir: "" }, undefined),
+    /requires a non-empty projectDir/i,
+  );
 });
 
 test("reload rejects an unknown action before touching the CLI", async () => {
@@ -96,7 +101,7 @@ test("apply also registers the dev skill and the session context when the host e
     },
   };
   apply(ctx);
-  assert.equal(registered.length, 7);
+  assert.equal(registered.length, 8);
   assert.equal(skills.length, 1);
   assert.equal(skills[0].name, "obsidian-plugin-dev");
   assert.equal(contexts.length, 1);
@@ -106,5 +111,5 @@ test("apply also registers the dev skill and the session context when the host e
 test("apply works with no optional services at all", () => {
   const registered = [];
   assert.doesNotThrow(() => apply({ tools: { register: (tool) => registered.push(tool) } }));
-  assert.equal(registered.length, 7);
+  assert.equal(registered.length, 8);
 });

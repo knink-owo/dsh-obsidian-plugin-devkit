@@ -13,12 +13,14 @@ claim to the next layer without evidence at the current one.
 - `validate` warnings are real findings, not trivia; fix or knowingly accept
   each one.
 
-## L2 — isolated smoke (tool: `test`, when available)
+## L2 — isolated smoke (tool: `obsidian_devkit_test`)
 
-Load the bundle in a sandbox with a stubbed `obsidian` module: constructing the
-plugin and calling `onload`/`onunload` must not throw, and the default export
-must extend the stubbed `Plugin`. This catches import-time crashes, missing
-exports and wrong module format. It does not prove real-API compatibility.
+`scenario: "load"` executes the bundle against a stubbed `obsidian` module;
+`scenario: "onload"` / `"unload"` also instantiate the plugin and await
+`onload`/`onunload` under a timeout. The default export must be a class
+extending the stubbed `Plugin`. This catches import-time crashes, ESM output,
+missing exports and wrong module format. It does not prove real-API
+compatibility — the bundle runs against stubs, not Obsidian.
 
 ## L3 — real vault (tools: `deploy`, `status`, `reload`)
 

@@ -7,7 +7,7 @@ license: MIT
 
 # Obsidian plugin development
 
-The seven `obsidian_devkit_*` tools do the mechanical work. This skill carries
+The eight `obsidian_devkit_*` tools do the mechanical work. This skill carries
 the judgement: what the official rules are, in which order to run things, and
 why a zero exit code is not proof that a plugin works.
 
@@ -29,8 +29,10 @@ why a zero exit code is not proof that a plugin works.
 5. **Verify in layers** — never trust one layer:
    - L1 static: build exit code + CommonJS shape + manifest consistency
      (reported by `build`, audited by `validate`).
-   - L2 isolated smoke: bundle loads with a stubbed `obsidian` module and
-     exports `onload`/`onunload` (the `test` tool, when present).
+   - L2 isolated smoke: `obsidian_devkit_test` executes the bundle with a
+     stubbed `obsidian` module and (scenario `onload`/`unload`) instantiates the
+     plugin and calls the lifecycle hooks. Catches ESM output, a missing
+     default export, a wrong prototype chain and import-time crashes.
    - L3 real vault: `deploy` writes the plugin and the app actually lists it;
      `status`/`reload` proof is read-only and reports "unknown" when the app
      cannot be reached.
@@ -53,6 +55,7 @@ why a zero exit code is not proof that a plugin works.
 | `obsidian_devkit_deploy` | copy build into a vault, merge enable list, record binding |
 | `obsidian_devkit_status` | read-only environment audit, deploy drift |
 | `obsidian_devkit_reload` | CLI reload/rescan/enable/disable + read-only verify |
+| `obsidian_devkit_test` | L2 isolated bundle smoke: load, instantiate, onload/unload |
 
 ## Hard rules
 

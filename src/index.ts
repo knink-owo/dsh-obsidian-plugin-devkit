@@ -13,6 +13,7 @@ import { deployPlugin } from "./deploy.js";
 import { reloadActionValues, reloadLive, type ReloadAction } from "./reload.js";
 import { scaffold } from "./scaffold.js";
 import { registerSkill } from "./skill.js";
+import { runSmoke, SMOKE_SCENARIOS, type SmokeScenario } from "./smoke.js";
 import { statusReport } from "./status.js";
 import { validateProject } from "./validate.js";
 import { bumpVersion } from "./version.js";
@@ -109,6 +110,14 @@ const RELOAD_DESCRIPTION =
   "Requires Obsidian >= 1.12.4 with the CLI enabled in Settings -> General and the app already running; " +
   "it never cold-starts the app, never steals focus, and never falls back to non-official window tricks. " +
   "Commands act on the frontmost vault; switch Obsidian to the target vault first.";
+
+const TEST_DESCRIPTION =
+  "L2 smoke test: load the built main.js in an isolated Node VM with a stubbed `obsidian` module, then " +
+  "optionally instantiate the plugin and call onload()/onunload(). Catches what a green build hides: " +
+  "ES-module output, missing default export, wrong prototype chain, import-time crashes, obvious onload " +
+  "hangs. Never a substitute for L3 (real vault) and L4 (human eyes): a pass only proves the bundle loads " +
+  "against stubs. The bundle code does execute with Node builtins available, so only smoke-test code you " +
+  "would actually install.";
 
 function readCall(exec: ToolRunContext | undefined, ctx: DevkitContext): FsCall {
   const session = exec?.agent?.session;
@@ -493,7 +502,64 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
     },
   };
 
-  return [scaffoldTool, buildTool, validateTool, versionTool, deployTool, statusTool, reloadTool];
+  const testTool: ToolDefinition = {
+    name: "obsidian_devkit_test",
+    description: TEST_DESCRIPTION,
+    parameters: objectSchema({
+      projectDir: {
+        type: "string",
+        required: true,
+        description: "Built plugin project directory (workspace-relative or absolute).",
+      },
+      bundle: {
+        type: "string",
+        description: "Bundle path override (workspace-relative or absolute); defaults to the project's main.js.",
+      },
+      scenario: {
+        type: "string",
+        enum: [...SMOKE_SCENARIOS],
+        description:
+          "load (execute the bundle), onload (also instantiate and await onload), or unload (also onload + onunload). Default load.",
+      },
+      timeoutMs: {
+        type: "number",
+        description: "onload/onunload timeout in milliseconds (default 15000).",
+      },
+    }),
+    output: textOutput,
+    isConcurrencySafe: () => true,
+    async execute(args, exec) {
+      const projectDir = stringArg(args, "projectDir");
+      if (projectDir === undefined) return "Test requires a non-empty projectDir parameter.";
+      const rawScenario = stringArg(args, "scenario") ?? "load";
+      if (!SMOKE_SCENARIOS.includes(rawScenario as SmokeScenario)) {
+        return `scenario must be one of: ${SMOKE_SCENARIOS.join(", ")}.`;
+      }
+      const timeout = typeof args.timeoutMs === "number" && args.timeoutMs > 0 ? args.timeoutMs : 15_000;
+      const result = await runSmoke(
+        fs,
+        {
+          projectDir,
+          bundle: stringArg(args, "bundle"),
+          scenario: rawScenario as SmokeScenario,
+          timeoutMs: timeout,
+        },
+        readCall(exec, ctx),
+      );
+      return result.report;
+    },
+  };
+
+  return [
+    scaffoldTool,
+    buildTool,
+    validateTool,
+    versionTool,
+    deployTool,
+    statusTool,
+    reloadTool,
+    testTool,
+  ];
 }
 
 export function apply(ctx: DevkitContext, config?: Partial<DevkitConfig>): void {

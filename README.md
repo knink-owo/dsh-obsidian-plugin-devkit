@@ -8,10 +8,10 @@ submitted to the community directory without name/description/version rejections
 background watcher, never starts Obsidian on its own and never touches a vault the user did not point
 it at.
 
-> Status: **v0.3.0 (M2 in progress)** — scaffold, build, validate, version, deploy to a vault,
-> environment status, CLI-backed reload, plus the bundled `obsidian-plugin-dev` development-guideline
-> skill and an injected session context. The read-only `test` smoke tool and the sandboxed e2e
-> runner arrive later in M2.
+> Status: **v0.4.0 (M2 in progress)** — scaffold, build, validate, version, deploy to a vault,
+> environment status, CLI-backed reload, an isolated L2 bundle smoke test, plus the bundled
+> `obsidian-plugin-dev` development-guideline skill and an injected session context. The sandboxed
+> e2e runner (WebdriverIO + wdio-obsidian-service) arrives later in M2.
 
 ## Install
 
@@ -36,6 +36,7 @@ reloads.
 | `obsidian_devkit_deploy` | Copies `main.js` / `manifest.json` / `styles.css` into `<vault>/.obsidian/plugins/<id>/`, merges the id into `community-plugins.json` (never replaces the list) and records `.dsh/devkit.json`. Needs no running app; defaults to a workspace `dev-vault` created on demand; `dryRun` previews. |
 | `obsidian_devkit_status` | Read-only environment audit: Obsidian running? CLI available and which version? registered vaults, project build state, where the plugin is deployed, drift between build and deployed copy, and what the running app actually sees. Every unknown is reported as unknown, with the reason. |
 | `obsidian_devkit_reload` | Acts on a running Obsidian through the official CLI: `reload` after a build, `rescan` to discover newly deployed plugins, `enable` / `disable`. Verifies with a read-only query and reports CLI quirks honestly (exit code 0 on errors, silent hang). |
+| `obsidian_devkit_test` | Read-only L2 smoke test: loads the built `main.js` in an isolated Node VM with a stubbed `obsidian` module, then optionally instantiates the plugin and calls `onload()`/`onunload()` (with a timeout). Catches ES-module output, a missing default export, a wrong prototype chain, import-time crashes and obvious onload hangs. Never a substitute for L3/L4. |
 
 Every report is Markdown in Chinese; code, member names and tool identifiers stay English.
 
@@ -58,7 +59,7 @@ If `obsidian` is not on `PATH`, set `OBSIDIAN_CLI` to the executable (for exampl
 ## Skill and session context
 
 Two optional host services are used when present; both are strictly best-effort, so a host without
-them keeps the seven tools and loses nothing else:
+them keeps the eight tools and loses nothing else:
 
 - **`obsidian-plugin-dev` skill** — registered through `skills.register` with `source: "runtime"`. Its
   body is the development workflow; `assets/skills/obsidian-plugin-dev/reference/` carries the
@@ -140,9 +141,9 @@ cordis.patch.yml     bundle patch: insert { id: obsidian-plugin-devkit, ... }
 ## Roadmap
 
 - **M1 (done)** scaffold / build / validate / version.
-- **M2 (in progress)** deploy to a development vault, `status`/`reload` via the official CLI, and the
-  `obsidian-plugin-dev` skill + session context — implemented and tested (76 tests). Still to come:
-  the read-only `test` smoke tool (L2) and sandboxed e2e (WebdriverIO + wdio-obsidian-service).
+- **M2 (in progress)** deploy to a development vault, `status`/`reload` via the official CLI, the
+  `obsidian-plugin-dev` skill + session context, and the read-only L2 `test` smoke tool — implemented
+  and tested (86 tests). Still to come: sandboxed e2e (WebdriverIO + wdio-obsidian-service).
 - **M3** API reference resource and submission automation.
 
 ## License

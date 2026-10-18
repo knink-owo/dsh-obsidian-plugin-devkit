@@ -314,3 +314,26 @@ schema must be a JSON Schema of 'type: "object"', got 'type: null'.
 **验证**：`tsc` 编译通过；`npm test` 76/76；插件已 link 安装在 desktop profile（v0.3.0）。宿主是否加载新代码需重启或在下一轮真实会话确认——`Tool.listTools` 只能验证工具；skill/context 需在**新会话**的系统提示与技能目录中确认。
 
 **M2 剩余**：`test`（L2 冒烟：隔离 vm + 桩 `obsidian` 模块加载 `main.js`）、`e2e`（WebdriverIO + wdio-obsidian-service）、npm 发布（M4）。
+
+---
+
+## 13. M2 实施记录（第三批：L2 隔离冒烟 `test` 工具，0.4.0）
+
+**版本**：`0.4.0`；注册工具由 7 个增至 8 个（新增只读 `obsidian_devkit_test`）。
+
+**能力边界**：`obsidian_devkit_test` 在 `node:vm` 里用 CommonJS 包装器执行构建产物 `main.js`，`require("obsidian")` 返回桩模块（`Plugin`/`PluginSettingTab`/`Setting`/`Notice`/`Modal`/`Component`/`normalizePath` 等），`electron`、`@codemirror/*`、`@lezer/*` 返回空桩，Node 内建模块透传，其余模块 require 直接报错（bundle 必须自包含）。`scenario`：`load`（仅执行）、`onload`（实例化并 await `onload`）、`unload`（额外调 `onunload`），静默/挂起用超时兜底。
+
+**检查清单**（任一失败即 FAIL）：构建产物存在且非空、模块可执行、CommonJS 形态（`module.exports`）、默认导出为函数、构造函数继承桩 `Plugin`、可实例化、`onload` 不抛错、`onunload` 不抛错。
+
+**设计决策**：
+
+1. **只证明“能加载”，不证明“是真的”**：报告明确标注 L2 只覆盖导入期与注册期崩溃；真实 API 兼容性必须 L3（真实 vault 部署）与 L4（人眼确认）。这是四层验证（L1 静态 → L2 隔离冒烟 → L3 真实 vault → L4 人眼）的中间层。
+2. **只读但会执行代码**：工具不写盘、不开 Obsidian；但 bundle 代码真实执行（Node 内建模块可用），描述里明确“只对你准备安装的代码运行”。
+3. **与 build/validate 分层**：build 只保证产物形态与版本一致；test 补上“模块真的能执行、插件类真的能实例化、生命周期钩子真的不抛错”。
+4. **路径语义**：`bundle` 覆盖项相对 `projectDir` 解析（绝对路径原样使用），默认读项目 `main.js`。
+
+**测试**：`npm test` 86 项全过（新增 `test/smoke.test.mjs` 10 项：通过用例、场景 onload/unload、产物缺失、ES module 输出、未继承 Plugin、未知 require、onload 抛错、onload 超时、bundle 路径覆盖）。`plugin.test.mjs` 更新为 8 工具断言。
+
+**真实 e2e**：对 `.devkit/demo`（M1 scaffold + esbuild 产物）跑 `scenario: unload` → PASS（2116 字节 bundle；模块执行/CommonJS/默认导出/继承 Plugin/实例化/onload/onunload 全通过）。
+
+**M2 剩余**：`e2e`（WebdriverIO + wdio-obsidian-service，独立 config dir、vault 副本）、npm 发布（M4）。
