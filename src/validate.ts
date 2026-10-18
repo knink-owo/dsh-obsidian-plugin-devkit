@@ -29,7 +29,7 @@ export async function validateProject(
 
   if (inspection.bundleText === null) {
     problems.push(
-      "No built main.js found; run obsidian_devkit_build before validating a deliverable.",
+      "No built main.js found; run obsidian-devkit build before validating a deliverable.",
     );
   }
 
@@ -88,10 +88,10 @@ export async function validateProject(
     sections,
     nextSteps: ok
       ? [
-          "调用 obsidian_devkit_version 提升版本号并同步 manifest/package/versions.json。",
+          "调用 obsidian-devkit version 提升版本号并同步 manifest/package/versions.json。",
           "git commit 后打 tag 并创建 GitHub release（assets: main.js、manifest.json、styles.css）。",
         ]
-      : ["按上面的阻塞问题逐项修复，再重新调用 obsidian_devkit_validate。"],
+      : ["按上面的阻塞问题逐项修复，再重新调用 obsidian-devkit validate。"],
   });
   return { ok, report };
 }

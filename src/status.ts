@@ -154,7 +154,7 @@ export async function statusReport(
     cliLines.push("- 说明：应用未运行时工具不会冷启动 Obsidian，因此不探测 CLI；需要实时操作时请手动打开 Obsidian。");
   } else if (!discovery.available) {
     cliLines.push("- 启用方式：设置 → 通用 → 命令行界面（Obsidian ≥ 1.12.4），重启应用后确认 obsidian 在 PATH 中。");
-    notes.push("CLI 不可用只影响实时重载/启用；文件级部署（obsidian_devkit_deploy）不需要 CLI。");
+    notes.push("CLI 不可用只影响实时重载/启用；文件级部署（obsidian-devkit deploy）不需要 CLI。");
   } else {
     const readActive =
       options.deps?.activeVault ?? ((target: CliDiscovery) => activeVaultName(target));
@@ -201,7 +201,7 @@ export async function statusReport(
     sections.push({ title: "项目", lines: projectLines });
     if (inspection.problems.length > 0) {
       warnings.push(
-        `项目有 ${inspection.problems.length} 个阻塞问题（运行 obsidian_devkit_validate 查看详情与修复建议）。`,
+        `项目有 ${inspection.problems.length} 个阻塞问题（运行 obsidian-devkit validate 查看详情与修复建议）。`,
       );
     }
     const readVersion = options.deps?.toolVersion ?? defaultToolVersion;
@@ -293,7 +293,7 @@ export async function statusReport(
         }；${bindingText}${deployment.drift === null ? "" : `；${deployment.drift}`}`,
       );
       if (deployment.drift !== null) {
-        warnings.push(`部署漂移：${deployment.vaultName} / ${deployment.pluginDir} — ${deployment.drift}。重新运行 obsidian_devkit_deploy。`);
+        warnings.push(`部署漂移：${deployment.vaultName} / ${deployment.pluginDir} — ${deployment.drift}。重新运行 obsidian-devkit deploy。`);
       }
     }
     if (deployments.length === 0) {
@@ -301,7 +301,7 @@ export async function statusReport(
     }
     if (!deployments.some((deployment) => deployment.installed)) {
       notes.push(
-        "该插件尚未出现在任何已检查的 vault 中；下一步运行 obsidian_devkit_deploy 部署，或检查 vault 注册表。",
+        "该插件尚未出现在任何已检查的 vault 中；下一步运行 obsidian-devkit deploy 部署，或检查 vault 注册表。",
       );
     }
     sections.push({ title: "部署位置", lines: deploymentLines });
@@ -337,8 +337,8 @@ export async function statusReport(
   }
 
   if (options.projectDir !== undefined) {
-    nextSteps.push("运行 obsidian_devkit_validate 检查项目是否满足提交规则。");
-    nextSteps.push("运行 obsidian_devkit_deploy 部署到开发 vault，然后用 obsidian_devkit_reload 让运行中的 Obsidian 加载新代码。");
+    nextSteps.push("运行 obsidian-devkit validate 检查项目是否满足提交规则。");
+    nextSteps.push("运行 obsidian-devkit deploy 部署到开发 vault，然后用 obsidian-devkit reload 让运行中的 Obsidian 加载新代码。");
   } else {
     nextSteps.push("传入 projectDir 可进一步检查项目构建产物、部署位置与漂移。");
   }

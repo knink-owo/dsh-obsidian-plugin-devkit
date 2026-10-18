@@ -144,7 +144,7 @@ export function namingWarnings(input: PluginNamingInput): string[] {
   return warnings;
 }
 
-/** Every hard naming problem for the metadata accepted by `obsidian_devkit_scaffold`. */
+/** Every hard naming problem for the metadata accepted by `obsidian-devkit scaffold`. */
 export function namingProblems(input: PluginNamingInput): string[] {
   const problems: string[] = [];
   if (input.id === undefined) problems.push("manifest id is required.");

@@ -1,168 +1,166 @@
-# dsh-obsidian-plugin-devkit
+# obsidian-plugin-devkit
 
-**DeepSeek Harness (DSH) tools for developing Obsidian community plugins.**
+**Build Obsidian community plugins the way reviewers expect — from the terminal or from an agent.**
 
-This bundle teaches a DSH agent how to scaffold, build, validate, version, deploy and live-reload an
-Obsidian community plugin correctly, so the plugin it produces can be loaded in Obsidian and
-submitted to the community directory without name/description/version rejections. It never runs a
-background watcher, never starts Obsidian on its own and never touches a vault the user did not point
-it at.
+This repository ships two things that share one core:
 
-> Status: **v0.5.0 (M2 complete)** — scaffold, build, validate, version, deploy to a vault,
-> environment status, CLI-backed reload, an isolated L2 bundle smoke test and a sandboxed
-> WebdriverIO e2e harness, plus the bundled `obsidian-plugin-dev` development-guideline skill and an
-> injected session context.
+1. **`obsidian-devkit`** — a small Node CLI (10 commands) that scaffolds, builds, validates, versions,
+   deploys, live-reloads, smoke-tests and e2e-scaffolds an Obsidian community plugin. It encodes the
+   official submission rules so a project is rejected *before* you write it.
+2. **`obsidian-plugin-dev`** — an agent skill that teaches a coding agent the judgement part: the
+   layered verification loop, the official naming/release rules, the CLI quirks, and the safety
+   boundaries (never cold-start Obsidian, never steal focus, never touch a vault you were not given).
+
+> Status: **v1.0.0** — CLI + skill. The former DSH (Cordis) plugin bundle is archived in
+> [`archive/plugin/`](archive/plugin/README.md) at git tag `archive-plugin-v0.5.0`.
+
+## Why a CLI instead of a plugin
+
+The original delivery was a DeepSeek Harness host bundle with nine `obsidian_devkit_*` tools. Almost
+all of that logic was already plain Node — only the host wrapper was harness-specific. The plugin
+form cost a profile install, a host-module reload after every change, and a coupling to the host tool
+API, while the actual capability is "run these checks on a plugin project".
+
+So v1.0.0 keeps the proven core and exposes it twice: as a normal CLI for humans, CI and scripts, and
+as a skill for agents (which bring their own shell). The plugin bundle is preserved for reference
+only.
 
 ## Install
 
 ```bash
-# from a local checkout (linked into the profile):
-dsh plugin --profile <profile> add D:\Projects\dsh-obsidian-devkit
-# or, once published:
-dsh plugin --profile <profile> add @knink-owo/dsh-obsidian-plugin-devkit
+# CLI (Node >= 20)
+npm install -g @knink-owo/dsh-obsidian-plugin-devkit
+obsidian-devkit --version
+
+# or without installing
+npx @knink-owo/dsh-obsidian-plugin-devkit --version
+
+# from a checkout
+npm install && npm run build && npm link
 ```
 
-The bundle is host-only (no UI half). Tools appear in every new agent session after the profile
-reloads.
+Install the agent skill into the DSH skills directory (default `~/.dsh/skills`, or `$DSH_HOME/skills`,
+or `$OBSIDIAN_DEVKIT_SKILLS_DIR`):
 
-## Tools
+```bash
+obsidian-devkit install-skill          # --force to replace, --skills-dir <dir> to override
+```
 
-| Tool | What it does |
+A skill installed this way is discovered by the harness like any other skill; the skill body tells
+the agent when and how to call `obsidian-devkit`.
+
+Optional, for live reload only: Obsidian **>= 1.12.4** with *Settings → General → Command line
+interface* enabled and the app already running. Everything else works with Obsidian closed.
+
+## Quick start
+
+```bash
+obsidian-devkit scaffold ./my-plugin --id my-plugin --name "My Plugin" --author "Jane"
+cd my-plugin && pnpm install
+obsidian-devkit build .
+obsidian-devkit test .              # L2 isolated smoke (no Obsidian needed)
+obsidian-devkit deploy .            # writes into the workspace dev-vault
+obsidian-devkit reload .            # if Obsidian is running with the CLI enabled
+obsidian-devkit validate .          # pre-delivery audit
+```
+
+Reports are Chinese Markdown; the exit code is the machine signal (`0` ok, `1` failed, `2` usage).
+Every command is documented in the skill's `reference/cli.md` and in `obsidian-devkit help`.
+
+## Commands
+
+| Command | What it does |
 | --- | --- |
-| `obsidian_devkit_scaffold` | Generates a buildable project: `manifest.json`, `package.json`, `esbuild.config.mjs`, `tsconfig.json`, `eslint.config.mts`, `versions.json`, `version-bump.mjs`, `LICENSE`, `README.md`, `AGENTS.md`, `styles.css`, `src/main.ts` + `src/settings.ts`. Rejects metadata the community reviewers reject. |
-| `obsidian_devkit_build` | Runs the project's `build` script (or the local esbuild binary) once, then statically checks the artifact: present, CommonJS-shaped, version-synced, settings gate consistent. |
-| `obsidian_devkit_validate` | Read-only pre-delivery audit: naming rules, manifest constraints, semver, version sync, entry file, bundle shape, declarative-settings gate, release checklist. |
-| `obsidian_devkit_version` | Bumps `manifest.json`, `package.json` and `versions.json` together (optionally raising `minAppVersion`) and reports exactly what changed. |
-| `obsidian_devkit_deploy` | Copies `main.js` / `manifest.json` / `styles.css` into `<vault>/.obsidian/plugins/<id>/`, merges the id into `community-plugins.json` (never replaces the list) and records `.dsh/devkit.json`. Needs no running app; defaults to a workspace `dev-vault` created on demand; `dryRun` previews. |
-| `obsidian_devkit_status` | Read-only environment audit: Obsidian running? CLI available and which version? registered vaults, project build state, where the plugin is deployed, drift between build and deployed copy, and what the running app actually sees. Every unknown is reported as unknown, with the reason. |
-| `obsidian_devkit_reload` | Acts on a running Obsidian through the official CLI: `reload` after a build, `rescan` to discover newly deployed plugins, `enable` / `disable`. Verifies with a read-only query and reports CLI quirks honestly (exit code 0 on errors, silent hang). |
-| `obsidian_devkit_e2e` | Sets up or audits a **sandboxed** end-to-end harness (wdio-obsidian-service + WebdriverIO 9): `wdio.conf.mts` with an isolated config dir and a throwaway vault copy, a generated spec, a fixture vault, `e2e/tsconfig.json`, and merged `devDependencies` + `test:e2e` script. `init` is idempotent and reports conflicts; `status` audits without changing anything. It never runs the suite: the first run downloads Obsidian and opens a window, which is a human/CI decision. |
-| `obsidian_devkit_test` | Read-only L2 smoke test: loads the built `main.js` in an isolated Node VM with a stubbed `obsidian` module, then optionally instantiates the plugin and calls `onload()`/`onunload()` (with a timeout). Catches ES-module output, a missing default export, a wrong prototype chain, import-time crashes and obvious onload hangs. Never a substitute for L3/L4. |
+| `scaffold <dir> --id --name` | Buildable project from the official template set: `manifest.json`, `package.json`, `esbuild.config.mjs`, `tsconfig.json`, `eslint.config.mts`, `versions.json`, `version-bump.mjs`, `LICENSE`, `README.md`, `AGENTS.md`, `styles.css`, `src/main.ts` + `src/settings.ts`. Rejects names/descriptions reviewers reject. |
+| `build <dir>` | One-shot build (project `build` script, else local esbuild), then static checks: artifact present, CommonJS-shaped, version-synced, settings gate consistent. No watcher. |
+| `validate <dir>` | Read-only pre-delivery audit: naming, manifest constraints, semver, version sync, entry, bundle shape, declarative-settings gate, release checklist. |
+| `version <dir> <semver>` | Syncs `manifest.json`, `package.json` and `versions.json` (optionally raises `minAppVersion`) and reports every changed file. |
+| `deploy <dir>` | Copies `main.js` / `manifest.json` / `styles.css` into `<vault>/.obsidian/plugins/<id>/`, merges the id into `community-plugins.json` (never replaces the list), records `.dsh/devkit.json`. Works with Obsidian closed; defaults to a workspace `dev-vault`; `--dry-run` previews. |
+| `status [dir]` | Read-only audit: Obsidian running? CLI version? registered vaults, project build state, deployments, drift between build and deployed copy, what the running app sees. Unknowns stay unknown, with the reason. |
+| `reload [dir]` | Official CLI only: `reload` / `rescan` / `enable` / `disable`. Verifies with a read-only query; reports CLI quirks honestly (errors exit 0, hangs print nothing). |
+| `test <dir>` | L2 smoke: loads the built `main.js` in an isolated Node VM with stubbed `obsidian`/`electron`/CodeMirror modules; optionally instantiates and calls `onload`/`onunload` under a timeout. |
+| `e2e <dir>` | Writes or audits a **sandboxed** WebdriverIO + wdio-obsidian-service harness (isolated config dir, throwaway vault copy, generated spec, merged devDependencies). Never runs the suite. |
+| `install-skill` | Copies the bundled `obsidian-plugin-dev` skill into a DSH skills directory. |
 
-Every report is Markdown in Chinese; code, member names and tool identifiers stay English.
-
-## Deployment and live reload
+### Deployment vs live reload
 
 Two independent channels, and the reports never mix them up:
 
-1. **File-level deploy** (`obsidian_devkit_deploy`) — works with Obsidian closed. It writes only the
-   three files Obsidian loads, keeps existing entries in `community-plugins.json`, and says
-   `active: unknown` unless it can prove otherwise.
-2. **Official CLI** (`obsidian_devkit_status`, `obsidian_devkit_reload`) — requires Obsidian
-   **1.12.4+** with *Settings → General → Command line interface* enabled and the app already
-   running. Window-scoped commands act on the frontmost vault, so the report warns when the target
-   vault is not focused. The tool never cold-starts Obsidian, never steals focus, and never falls
-   back to window-handle tricks: without the CLI it refuses and points at the file-level channel.
+1. **File-level deploy** — works with Obsidian closed. It writes only the three files Obsidian loads,
+   keeps existing `community-plugins.json` entries, and reports `active: unknown` unless it can prove
+   otherwise.
+2. **Official CLI** — requires Obsidian 1.12.4+ with the CLI enabled and running. Window-scoped
+   commands act on the frontmost vault, so the report warns when the target vault is not active. The
+   tool never cold-starts Obsidian and never falls back to window-handle tricks; without the CLI it
+   refuses and points at the file-level channel.
 
-If `obsidian` is not on `PATH`, set `OBSIDIAN_CLI` to the executable (for example
-`...\Obsidian\Obsidian.com`) or configure `obsidianCli` below.
+If `obsidian` is not on `PATH`, set `OBSIDIAN_CLI` (for example to
+`...\Obsidian\Obsidian.com`) or pass `--obsidian-cli`.
 
-## End-to-end harness
+### Verification layers
 
-`obsidian_devkit_e2e` writes a reviewable harness for
-[`wdio-obsidian-service`](https://github.com/jesse-r-s-hines/wdio-obsidian-service) (WebdriverIO 9)
-into the plugin project:
+A green build proves almost nothing. The skill enforces four layers:
 
-```bash
-obsidian_devkit_e2e { projectDir, action: "init" }   # write/merge the harness (idempotent)
-obsidian_devkit_e2e { projectDir, action: "status" } # read-only audit
-```
+- **L1 static** — `build` / `validate`: artifact, CommonJS shape, manifest and version sync.
+- **L2 isolated smoke** — `test`: bundle executes against stubs; catches ESM output, missing default
+  export, wrong prototype chain, import-time crashes, onload hangs.
+- **L3 real vault** — `deploy` + `status` / `reload`: the app lists the plugin; proofs stay read-only.
+  `e2e` scaffolds a repeatable UI harness, but running it is a human/CI decision.
+- **L4 human/UI** — actual behaviour; an agent never claims it without a human or a screenshot.
 
-Then, in the project: `pnpm install` and `pnpm run test:e2e`. The service runs a real Obsidian with an
-isolated config directory and a throwaway copy of `e2e/vaults/simple`, installing the plugin from the
-project directory. Your vaults and running Obsidian are never used. The first run downloads Obsidian
-into `.obsidian-cache/` (ignored by git via the generated entry), so the devkit itself never runs the
-suite — that is a human or CI decision.
+## The skill
 
-## Skill and session context
+[`skill/obsidian-plugin-dev/`](skill/obsidian-plugin-dev/SKILL.md) is self-contained: `SKILL.md` is
+the workflow and the hard rules, `reference/cli.md` is the complete CLI fallback reference, and
+`reference/{submission,settings,lifecycle,verification,debugging}.md` carry the official rules and the
+API patterns. `install-skill` copies it into a skills directory; the agent loads the reference files
+on demand.
 
-Two optional host services are used when present; both are strictly best-effort, so a host without
-them keeps the nine tools and loses nothing else:
+The skill also states the non-negotiable boundaries: never cold-start Obsidian, never steal focus,
+never enable/disable a user's plugins unasked, report "unknown" instead of guessing, and never write a
+vault with Node `fs` behind the app's back.
 
-- **`obsidian-plugin-dev` skill** — registered through `skills.register` with `source: "runtime"`. Its
-  body is the development workflow; `assets/skills/obsidian-plugin-dev/reference/` carries the
-  official submission rules, the declarative-vs-legacy settings gate, lifecycle/API patterns, the
-  layered verification loop (L1 static → L2 isolated smoke → L3 real vault → L4 human check) and the
-  CLI debugging quirks. The skill directory is exposed as the resource base, so reference files load
-  on demand instead of inflating the tool list.
-- **Session context** — one `systemPrompt` context entry (`obsidian-plugin-devkit`, order 250) that
-  states the safety boundaries: never cold-start Obsidian, never steal focus, never enable/disable a
-  user's plugins unasked, report "unknown" instead of guessing, and verify in layers.
-
-The context text lives in `assets/docs/harness.default.md` so it can be edited without a rebuild;
-the compiled-in fallback keeps registration working if the asset is missing. Both registrations are
-skipped silently when the host service is absent and logged (not thrown) when a host rejects them.
-
-## Scaffold layouts
+## Template and settings styles
 
 - **Declarative settings** (default when `minAppVersion >= 1.13.0`): the settings tab overrides
-  `getSettingDefinitions(): SettingDefinitionItem[]`, which Obsidian turns into a settings UI and
-  binds to `plugin.settings` through `getControlValue`/`setControlValue`.
+  `getSettingDefinitions(): SettingDefinitionItem[]`, which Obsidian renders and binds to
+  `plugin.settings` through `getControlValue`/`setControlValue`.
 - **Legacy settings** (`minAppVersion < 1.13.0`): the generated tab implements `display()` with
-  `new Setting(...)`. Pick this whenever the plugin must run on older Obsidian versions.
+  `new Setting(...)`.
+- `--settings-style auto|declarative|legacy` overrides the choice; `validate` blocks a declarative tab
+  below Obsidian 1.13.0.
 
-`settingsStyle: "auto"` decides from `minAppVersion`; the explicit values override it, and the
-validator blocks a declarative tab below Obsidian 1.13.0.
+## Repository layout
 
-## Configuration
-
-`cordis.patch.yml` mounts the bundle with:
-
-```yaml
-config:
-  defaultMinAppVersion: 1.13.0
-  testVault: dev-vault
-  packageManager: pnpm
-  obsidianCli: obsidian
-  probeActive: true
 ```
-
-- `testVault` — workspace-relative development vault used by `deploy` when no vault is given.
-- `packageManager` — fallback for running a project build script when no lockfile decides.
-- `obsidianCli` — CLI invocation; `"obsidian"` resolves through `PATH`, an absolute path pins one
-  install (the `OBSIDIAN_CLI` environment variable wins over both).
-- `probeActive` — whether `deploy` performs the read-only running-app probe after writing files.
+src/                 CLI core: commandline.ts + scaffold/build/validate/version/deploy/status/
+                     reload/test/e2e modules, naming rules, vault + CLI channels, templates
+assets/templates/    files written by scaffold (placeholders like {{PLUGIN_ID}})
+skill/               obsidian-plugin-dev SKILL.md + reference/
+docs/                research notes, the design proposal, DSH plugin guide (historical)
+archive/plugin/      archived DSH (Cordis) plugin bundle, v0.5.0
+test/                node:test suites (89 tests, no child processes)
+lib/                 compiled output (gitignored)
+```
 
 ## Development
 
 ```bash
 npm install
 npm run build      # tsc -> lib/
-npm test           # node --test over the suites (no child processes needed)
+npm test           # node --test, 89 tests
+npm pack --dry-run # verify the published file set
 ```
 
-Notes for this repository's test setup: the test runner uses `--test-isolation=none` because the
-DSH sandbox forbids Node's default per-file child process. Tests use the Node `fs` fallback of
-`Fs` (no DSH context needed).
-
-## DSH contract notes
-
-Tool schemas must be object-root JSON Schema (``parameters: { type: "object", properties, ... }``)
-because the harness projects them verbatim to the model API, and `isConcurrencySafe` is a function.
-The full checklist and the M1 schema-bug postmortem live in
-[docs/dsh-plugin-guide.zh.md](docs/dsh-plugin-guide.zh.md).
-
-## Layout
-
-```
-src/                 host plugin: index.ts (cordis entry), tools, fs wrapper, proc runner,
-                     cli/vault/deploy/status/reload channels, skill + context registration
-assets/templates/    files written by scaffold (placeholders like {{PLUGIN_ID}})
-assets/skills/       obsidian-plugin-dev SKILL.md + reference/ (registered into `skills`)
-assets/docs/         harness.default.md (injected session context text)
-lib/                 compiled output (gitignored)
-docs/                research notes and the design proposal
-test/                node:test suites
-cordis.patch.yml     bundle patch: insert { id: obsidian-plugin-devkit, ... }
-```
+The bundled test runner uses `--test-isolation=none` because the DSH sandbox forbids Node's default
+per-file child process; the suites exercise the library directly through the `Fs` Node fallback.
 
 ## Roadmap
 
-- **M1 (done)** scaffold / build / validate / version.
-- **M2 (done)** deploy to a development vault, `status`/`reload` via the official CLI, the
-  `obsidian-plugin-dev` skill + session context, the read-only L2 `test` smoke tool, and the
-  sandboxed `e2e` harness — implemented and tested (94 tests).
-- **M3** API reference resource, submission automation, release packaging and npm publishing.
+- **v1.0.0 (this)** — CLI (10 commands) + agent skill; the DSH plugin bundle archived.
+- **v1.1** — API-reference resource for the Obsidian TypeScript API (offline search for the agent),
+  submission automation.
+- **Later** — npm publish, GitHub release workflow.
 
 ## License
 

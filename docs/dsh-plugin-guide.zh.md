@@ -121,3 +121,7 @@ Harness 自带的 `defineTool`（`@deepseek-ai/dsh-tools`）接受扁平 DSL 并
 - `test/plugin.test.mjs`：新增对象根/属性/并发函数断言，防止回归。
 - 移除未使用的 `@deepseek-ai/schemastery` peer/dev 依赖，避免 pnpm 的 peer 警告。
 - 补齐 `locale/en.json`、`locale/zh.json`、`icon.svg`、`exports`/`files` 条目。
+
+## 归档说明（v1.0.0）
+
+本文件描述的是 **v0.5.0 及之前的 DSH 插件形态**，该形态已于 v1.0.0 归档（代码在 `archive/plugin/`，git tag `archive-plugin-v0.5.0`）。当前交付形态是 `obsidian-devkit` CLI + `skill/obsidian-plugin-dev` 独立 skill；本文件保留作为宿主 bundle 契约与排错的历史记录，不再随 CLI 维护。文中 `obsidian_devkit_*` 工具名对应现在的 CLI 命令（例如 `obsidian_devkit_validate` → `obsidian-devkit validate <dir>`）。

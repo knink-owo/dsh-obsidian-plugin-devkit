@@ -122,7 +122,7 @@ export async function deployPlugin(
     if (manifest === null) problems.push("manifest.json 无法读取，无法确定插件 id / 版本，已停止部署。");
     if (inspection.bundleText === null) {
       problems.push(
-        "没有可部署的 main.js：先运行 obsidian_devkit_build（生产构建），部署只复制构建产物。",
+        "没有可部署的 main.js：先运行 obsidian-devkit build（生产构建），部署只复制构建产物。",
       );
     }
     return finish(manifest?.id ?? null, null, []);
@@ -142,7 +142,7 @@ export async function deployPlugin(
   if (inspection.problems.length > 0) {
     const preview = inspection.problems.slice(0, 3).map((item) => `- ${item}`).join("\n");
     warnings.push(
-      `项目自检仍有 ${inspection.problems.length} 个阻塞问题，部署产物可能无法加载（先运行 obsidian_devkit_validate）：\n${preview}`,
+      `项目自检仍有 ${inspection.problems.length} 个阻塞问题，部署产物可能无法加载（先运行 obsidian-devkit validate）：\n${preview}`,
     );
   }
 
@@ -350,7 +350,7 @@ export async function deployPlugin(
           discoveryHint(),
         );
       }
-      nextSteps.push("运行 obsidian_devkit_status 复查部署状态与漂移。");
+      nextSteps.push("运行 obsidian-devkit status 复查部署状态与漂移。");
     }
   }
 
@@ -358,5 +358,5 @@ export async function deployPlugin(
 }
 
 function discoveryHint(): string {
-  return "若 Obsidian 正在运行：用 obsidian_devkit_reload 执行 plugin:reload（或 action=rescan 让新插件被发现），无需手动重启。";
+  return "若 Obsidian 正在运行：用 obsidian-devkit reload --action reload（或 --action rescan 让新插件被发现），无需手动重启。";
 }

@@ -5,6 +5,7 @@ lib/
 .devkit/
 dev-vault/
 *.log
+*.tgz
 .DS_Store
 .pnpm-store/
 research/

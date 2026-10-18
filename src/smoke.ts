@@ -413,7 +413,7 @@ export async function runSmoke(
     "构建产物",
     text !== null && text.length > 0,
     text === null || text.length === 0
-      ? `${bundlePath} 不存在或为空；先运行 obsidian_devkit_build`
+      ? `${bundlePath} 不存在或为空；先运行 obsidian-devkit build`
       : `${bundlePath}（${Buffer.byteLength(text, "utf8")} 字节）`,
   );
 
@@ -534,7 +534,7 @@ export async function runSmoke(
     ],
     nextSteps:
       problems.length === 0
-        ? ["部署到真实 vault（obsidian_devkit_deploy），再按 L3/L4 验证真实行为。"]
+        ? ["部署到真实 vault（obsidian-devkit deploy），再按 L3/L4 验证真实行为。"]
         : ["先修复上面的阻塞问题；这是隔离加载的最底层证据，不再往下验证。"],
   });
 

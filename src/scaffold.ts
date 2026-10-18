@@ -85,7 +85,7 @@ export async function scaffold(
       title: `Scaffold ${options.name || options.targetDir}`,
       summary: verdict(problems, [], "未写入任何文件。"),
       problems,
-      nextSteps: ["修正上面的元数据后重新调用 obsidian_devkit_scaffold。"],
+      nextSteps: ["修正上面的元数据后重新调用 obsidian-devkit scaffold。"],
     });
     return result;
   }
@@ -192,8 +192,8 @@ export async function scaffold(
     ],
     nextSteps: [
       `cd ${options.targetDir} && ${options.packageManager} install`,
-      "调用 obsidian_devkit_build 生成 main.js（会执行 tsc 类型检查与 esbuild 打包）。",
-      "调用 obsidian_devkit_validate 复核元数据与产物。",
+      "调用 obsidian-devkit build 生成 main.js（会执行 tsc 类型检查与 esbuild 打包）。",
+      "调用 obsidian-devkit validate 复核元数据与产物。",
     ],
   });
   return result;

@@ -98,7 +98,7 @@ test("runSmoke fails when the build artifact is missing", async () => {
     const result = await smoke(project);
     assert.equal(result.ok, false);
     assert.match(result.report, /构建产物/);
-    assert.match(result.report, /obsidian_devkit_build/);
+    assert.match(result.report, /obsidian-devkit build/);
   } finally {
     rmSync(room, { recursive: true, force: true });
   }

@@ -1,25 +1,26 @@
 {
   "name": "@knink-owo/dsh-obsidian-plugin-devkit",
-  "version": "0.5.0",
-  "description": "Obsidian community plugin development capabilities for DeepSeek Harness agents: scaffolding, building, validation, versioning, deployment to a vault, live reload through the official CLI, and an isolated L2 bundle smoke test, and a sandboxed WebdriverIO end-to-end harness.",
+  "version": "1.0.0",
+  "description": "Obsidian community plugin development toolkit: the `obsidian-devkit` CLI plus an agent skill covering scaffold, build, validate, version, deploy, live reload, isolated L2 smoke tests and a sandboxed WebdriverIO e2e harness.",
   "type": "module",
-  "main": "./lib/index.js",
-  "types": "./lib/index.d.ts",
+  "bin": {
+    "obsidian-devkit": "./lib/commandline.js"
+  },
+  "main": "./lib/commandline.js",
+  "types": "./lib/commandline.d.ts",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
+      "types": "./lib/commandline.d.ts",
+      "default": "./lib/commandline.js"
     },
-    "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
-    "assets",
-    "locale/*.json",
-    "icon.svg",
-    "cordis.patch.yml"
+    "assets/templates",
+    "skill",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
@@ -28,14 +29,19 @@
     "build": "tsc -p tsconfig.json",
     "clean": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\"",
     "pretest": "npm run build",
-    "test": "node --test --test-isolation=none test/naming.test.mjs test/templates.test.mjs test/scaffold.test.mjs test/version.test.mjs test/vault.test.mjs test/cli.test.mjs test/deploy.test.mjs test/status.test.mjs test/reload.test.mjs test/smoke.test.mjs test/skill.test.mjs test/context.test.mjs test/e2e.test.mjs test/plugin.test.mjs",
+    "test": "node --test --test-isolation=none test/naming.test.mjs test/templates.test.mjs test/scaffold.test.mjs test/version.test.mjs test/vault.test.mjs test/cli.test.mjs test/deploy.test.mjs test/status.test.mjs test/reload.test.mjs test/smoke.test.mjs test/e2e.test.mjs test/commandline.test.mjs",
     "prepack": "npm run build"
   },
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
-  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "plugin-development",
+    "cli",
+    "agent-skill",
+    "esbuild",
+    "webdriverio"
+  ],
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.15.17",
     "typescript": "^5.8.3"

@@ -71,7 +71,7 @@ const CLI_UNAVAILABLE_STEPS = [
   "确认 Obsidian 版本 ≥ 1.12.4：设置 → 通用 → 命令行界面（Command line interface），启用后重启 Obsidian。",
   "确认 `obsidian` 在 PATH 中：Windows 安装目录 C:\\Users\\<你>\\AppData\\Local\\Programs\\Obsidian 已加入用户 PATH 的话，需重启终端/宿主使其生效。",
   "也可以设置环境变量 OBSIDIAN_CLI 指向 Obsidian 可执行文件（例如 ...\\Obsidian\\Obsidian.com）。",
-  "本工具不会用 AppleScript / 窗口句柄等非官方途径操作 Obsidian；CLI 不可用时就只能走文件级部署（obsidian_devkit_deploy）。",
+  "本工具不会用 AppleScript / 窗口句柄等非官方途径操作 Obsidian；CLI 不可用时就只能走文件级部署（obsidian-devkit deploy）。",
 ];
 
 export async function reloadLive(
@@ -130,7 +130,7 @@ export async function reloadLive(
     discoverCli({ command: options.cliCommand });
   if (!discovery.appRunning) {
     problems.push(
-      "Obsidian 未运行：实时重载需要一个正在运行的 Obsidian 实例（CLI 冷启动会拉起应用，工具不会这么做）。先手动打开 Obsidian，或改用 obsidian_devkit_deploy。",
+      "Obsidian 未运行：实时重载需要一个正在运行的 Obsidian 实例（CLI 冷启动会拉起应用，工具不会这么做）。先手动打开 Obsidian，或改用 obsidian-devkit deploy。",
     );
     nextSteps.push(...CLI_UNAVAILABLE_STEPS.slice(0, 1));
     return finish(id);
@@ -170,7 +170,7 @@ export async function reloadLive(
       problems.push(
         `CLI 报告插件 "${id}" 未被发现（${output.split(/\r?\n/)[0]}）。这通常意味着插件没有部署到该 vault，或 vault 加载后新增的插件文件夹需要先 rescan。`,
       );
-      nextSteps.push("先运行 obsidian_devkit_deploy 确认文件就位，然后用 action=rescan 让 Obsidian 重新发现插件。");
+      nextSteps.push("先运行 obsidian-devkit deploy 确认文件就位，然后用 obsidian-devkit reload --action rescan 让 Obsidian 重新发现插件。");
     } else if (/not enabled/i.test(output)) {
       problems.push(
         `CLI 报告插件 "${id}" 未启用（该操作要求插件已启用）。先执行 action=enable，或在 设置 → 第三方插件 中启用。`,
@@ -254,8 +254,8 @@ export async function reloadLive(
   }
   nextSteps.push(
     options.action === "reload"
-      ? "重载后若行为未更新，检查构建产物是否重新部署（obsidian_devkit_deploy）并确认 main.js 是生产构建。"
-      : "用 obsidian_devkit_status 复查插件启用状态与部署漂移。",
+      ? "重载后若行为未更新，检查构建产物是否重新部署（obsidian-devkit deploy）并确认 main.js 是生产构建。"
+      : "用 obsidian-devkit status 复查插件启用状态与部署漂移。",
   );
 
   return finish(id);

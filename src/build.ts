@@ -235,7 +235,7 @@ export async function buildPlugin(
     ],
     nextSteps: ok
       ? [
-          "调用 obsidian_devkit_validate 做交付前复核。",
+          "调用 obsidian-devkit validate 做交付前复核。",
           "把 main.js、manifest.json、styles.css 部署到开发 vault 的 .obsidian/plugins/<id>/（M2 的 deploy 工具将自动化这一步）。",
         ]
       : ["根据上面的阻塞问题修复后重新构建。"],

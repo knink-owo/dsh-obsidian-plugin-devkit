@@ -371,3 +371,29 @@ schema must be a JSON Schema of 'type: "object"', got 'type: null'.
 **真实 e2e（工具层）**：对 `.devkit/demo`（插件 id `demo-hub`，构建产物已存在）跑 `action: init` → PASS，写 9 个文件、0 冲突；生成的 spec 正确带 `demo-hub` 与 `demo-hub:open-modal`；`action: status` → 正确 FAIL 于“依赖未安装”，其余 8 项 PASS。
 
 **M2 状态**：deploy / status / reload、skill + 上下文注入、L2 冒烟、sandboxed e2e 脚手架全部完成（v0.5.0，94 tests）。M2 剩余仅“真正跑一次 WebdriverIO 套件”（需要用户本机/CI 网络与显示环境）与 npm 发布（M4）。
+
+## 15. v1.0.0：交付形态改为 CLI + skill（插件归档）
+
+**决策（用户提出并拍板）**：插件形态对“提供 Obsidian 插件开发能力”过于繁琐——核心逻辑本来就是纯 Node（`Fs` seam 有 node:fs 回退），插件只提供常驻工具 schema 与上下文注入，却要承担 profile 安装、每次改动的宿主模块热重载、以及宿主 Tool API 耦合（`type: null` 事故即一例）。因此 v1.0.0 起改为：
+
+- **`obsidian-devkit` CLI**（`bin` → `lib/commandline.js`）：10 个命令 = 原 9 个工具 + `install-skill`；`--cwd` 全局参数；退出码 0 成功 / 1 操作失败 / 2 用法错误；报告仍为中文。
+- **独立 skill 包**：`skill/obsidian-plugin-dev/`（SKILL.md + 6 个 reference），可由 `obsidian-devkit install-skill` 安装到 `~/.dsh/skills/`（或 `$DSH_HOME/skills`、`$OBSIDIAN_DEVKIT_SKILLS_DIR`）。
+- **旧插件归档**：`src/index.ts`、`src/skill.ts`、`src/context.ts`、`cordis.patch.yml`、`locale/`、`icon.svg`、`assets/docs/harness.default.md` 移入 `archive/plugin/`，git tag `archive-plugin-v0.5.0` 指向最后一次插件提交 `129e553`；profile 中的 bundle 行已移除。
+
+**结构变化**：`assets/skills/obsidian-plugin-dev/` → `skill/obsidian-plugin-dev/`；新增 `src/commandline.ts`（`runCli(argv, io)` 可测试，`isMainModule()` 判断直接执行）；`package.json` v1.0.0，`bin`/`main`/`types` 全部指向 CLI，移除 `dsh.bundle.patch` 与 locale/icon exports；`files` = `lib` + `assets/templates` + `skill` + README/LICENSE；`pretest`/`prepack` 均先 build；`tsconfig` 只 include `src`（归档代码不参与编译）。
+
+**验证（2026-10-18）**：
+
+- `npm test`：89 项全过（12 个测试文件；新增 `test/commandline.test.mjs` 13 项覆盖 help/usage/未知命令与参数、scaffold 命名规则、validate、version、deploy --dry-run、test 冒烟正反例、e2e init+status、install-skill 幂等与 --force）。
+- 真实 CLI 链路（本机实跑）：`status` PASS（Obsidian 运行中、CLI 1.14.4、5 个注册 vault、前台 vault all-in-one）→ `scaffold` → `build`（main.js 1983B CommonJS）→ `test` PASS → `deploy` 到 `dev-vault` → `reload` 走官方 CLI（`plugin:reload`，静默错误分类正确）→ `e2e init` → `install-skill` 安装成功。
+- skill 可独立加载：安装后宿主 skill catalog 出现 `obsidian-plugin-dev`，`skill` 工具可加载正文（含 reference 资源基路径）；移除旧插件后上下文注入消失、skill 仍由文件系统 provider 提供。
+- 插件退役：`plugin_manager remove_bundle` 后 profile `cordis.yml` 无该 bundle 行；旧标签与归档目录保留可回溯。
+
+**踩坑记录**：
+
+1. 新建 CLI 入口曾误覆盖 `src/cli.ts`（Obsidian 官方 CLI 通道模块）→ `git checkout --` 恢复并改名 `src/commandline.ts`；测试文件相应为 `test/commandline.test.mjs`。
+2. `scaffold` 的版本参数与全局 `--version` 冲突 → scaffold 改用 `--plugin-version`。
+3. **YAML frontmatter 陷阱**：skill 的 `whenToUse` 值里含 `plugin: new`（冒号+空格），YAML plain scalar 因此非法，文件系统 skill provider 解析失败并静默跳过（宿主日志 warn）。修复：`description`/`whenToUse` 用单引号包裹。教训：手写的 frontmatter 也应按 YAML 解析器验证，不要依赖宿主的宽松解析。
+4. 旧插件移除后宿主一度进入 inactive 状态（`sessionProjections` 不可用），需重启桌面应用恢复；期间所有工具调用失败，说明“移除正在被当前会话使用的 bundle”是有风险操作。
+
+**仍未完成**：云端 GitHub 仓库 `knink-owo/dsh-obsidian-plugin-devkit` 仍为空，需用户在有 GitHub 凭据的终端 push；profile `package.json` 里可能残留 `link:` 依赖行（bundle 行已移除，可后续用 `dsh plugin --profile desktop remove` 清理）；npm 发布属 M4。
