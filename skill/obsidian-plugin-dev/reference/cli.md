@@ -1,27 +1,29 @@
-# `obsidian-devkit` CLI reference
+# `scripts/devkit.mjs` reference
 
-The skill assumes the `obsidian-devkit` command is on `PATH`. This file is the
-complete fallback reference: how to install it, every command and flag, the
-environment variables, and what to do when the CLI is unavailable.
-
-## Install
+The skill ships its own runtime in `scripts/`. There is no global
+`obsidian-devkit` command to install and no package to fetch. Run the local
+entry from the skill folder:
 
 ```bash
-npm install -g @knink-owo/dsh-obsidian-plugin-devkit   # global command
-npx @knink-owo/dsh-obsidian-plugin-devkit --version    # no install
+node scripts/devkit.mjs --version
 ```
 
-From a checkout: `npm install && npm run build && npm link` (the `bin` points
-at the built `lib/commandline.js`, so build before linking).
+If you are running from another directory, prefix the path:
 
-The CLI is plain Node (>= 20). It needs no Obsidian running except for
-`reload`, and no network except when the project's own `install`/`build`
-scripts need it.
+```bash
+node <skills-dir>/obsidian-plugin-dev/scripts/devkit.mjs --version
+```
+
+The runtime is plain Node (>= 20) and has no third-party runtime dependencies.
+It needs no Obsidian running except for `reload`, and no network except when
+the project's own `install`/`build` scripts need it.
 
 ## Conventions
 
 - Reports are Chinese text on stdout; the exit code is the machine signal:
-  `0` success, `1` the operation ran and failed, `2` usage error.
+  `0` success, `1` the operation ran and failed, `2` usage error. Some report
+  strings still say `obsidian-devkit`; the command is always the local entry
+  above.
 - Relative paths are resolved against `--cwd` (default: the current directory).
 - `deploy` and `status` never open or focus Obsidian; `reload` never
   cold-starts it. Window-level CLI commands act on the **frontmost** vault.
@@ -30,16 +32,15 @@ scripts need it.
 ## Commands
 
 ```
-obsidian-devkit scaffold <targetDir> --id <id> --name <name> [flags]
-obsidian-devkit build <projectDir> [flags]
-obsidian-devkit validate <projectDir>
-obsidian-devkit version <projectDir> <semver> [--min-app-version <semver>]
-obsidian-devkit deploy <projectDir> [flags]
-obsidian-devkit status [projectDir] [flags]
-obsidian-devkit reload [projectDir] [flags]
-obsidian-devkit test <projectDir> [flags]
-obsidian-devkit e2e <projectDir> [--action init|status] [--overwrite]
-obsidian-devkit install-skill [--skills-dir <dir>] [--force]
+node scripts/devkit.mjs scaffold <targetDir> --id <id> --name <name> [flags]
+node scripts/devkit.mjs build <projectDir> [flags]
+node scripts/devkit.mjs validate <projectDir>
+node scripts/devkit.mjs version <projectDir> <semver> [--min-app-version <semver>]
+node scripts/devkit.mjs deploy <projectDir> [flags]
+node scripts/devkit.mjs status [projectDir] [flags]
+node scripts/devkit.mjs reload [projectDir] [flags]
+node scripts/devkit.mjs test <projectDir> [flags]
+node scripts/devkit.mjs e2e <projectDir> [--action init|status] [--overwrite]
 ```
 
 ### scaffold
@@ -107,8 +108,8 @@ reason. `--vault`, `--test-vault`, `--obsidian-cli` as above.
 
 ### reload
 
-Drives a running Obsidian through the **official CLI** (Obsidian >= 1.12.4,
-CLI enabled in Settings -> General). `--action reload|rescan|enable|disable`
+Drives a running Obsidian through the **official Obsidian CLI** (Obsidian >=
+1.12.4, CLI enabled in Settings -> General). `--action reload|rescan|enable|disable`
 (default `reload`), `--plugin-id`, `--vault`, `--timeout <ms>` (30000),
 `--obsidian-cli`. Exit 0 does not prove success: the CLI prints `Error:` and
 still exits 0, so the command also performs a read-only verification query.
@@ -130,24 +131,21 @@ script. `--action init|status` (default `init`), `--overwrite`. It never runs
 the suite: the first run downloads Obsidian (hundreds of MB) and opens a
 sandboxed window, which is a human/CI decision.
 
-### install-skill
-
-Copies the bundled `obsidian-plugin-dev` skill into a DSH skills directory
-(default `~/.dsh/skills`, or `$DSH_HOME/skills`, or
-`$OBSIDIAN_DEVKIT_SKILLS_DIR`). `--skills-dir <dir>`, `--force` to replace.
-
 ## Environment variables
 
 | Variable | Meaning |
 | --- | --- |
 | `OBSIDIAN_CLI` | path/command of the Obsidian CLI wrapper (default `obsidian`) |
-| `OBSIDIAN_DEVKIT_SKILLS_DIR` | target skills directory for `install-skill` |
-| `DSH_HOME` | DSH home; `install-skill` uses `<DSH_HOME>/skills` when set |
 | `--cwd <dir>` | base directory for relative paths (global flag) |
 
-## If the CLI is unavailable
+`install-skill` is not part of the skill workflow: install by copying the folder,
+and the runtime travels inside it. The compiled `lib/commandline.js` may still
+accept the legacy subcommand for older devkit users; do not rely on it.
 
-Do the steps by hand and say which verification layer you could not run:
+## If the scripts cannot run
+
+If Node.js < 20 or the `scripts/` folder is missing, do the steps by hand and
+say which verification layer you could not run:
 
 - Scaffold/build: copy the template files from the repository's
   `assets/templates/` and run `pnpm install` + the project's `build` script.

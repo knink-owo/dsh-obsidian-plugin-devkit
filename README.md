@@ -4,50 +4,51 @@
 
 This repository ships two things that share one core:
 
-1. **`obsidian-devkit`** — a small Node CLI (10 commands) that scaffolds, builds, validates, versions,
-   deploys, live-reloads, smoke-tests and e2e-scaffolds an Obsidian community plugin. It encodes the
+1. **The devkit runtime** — plain Node scripts (nine commands) that scaffold, build, validate, version,
+   deploy, live-reload, smoke-test and e2e-scaffold an Obsidian community plugin. It encodes the
    official submission rules so a project is rejected *before* you write it.
-2. **`obsidian-plugin-dev`** — an agent skill that teaches a coding agent the judgement part: the
-   layered verification loop, the official naming/release rules, the CLI quirks, and the safety
-   boundaries (never cold-start Obsidian, never steal focus, never touch a vault you were not given).
+2. **`obsidian-plugin-dev`** — a self-contained agent skill that teaches a coding agent the judgement
+   part: the layered verification loop, the official naming/release rules, the runtime quirks, and the
+   safety boundaries (never cold-start Obsidian, never steal focus, never touch a vault you were not
+   given). Its `scripts/` folder carries the runtime, so installing the skill needs no global CLI.
 
-> Status: **v1.0.0** — CLI + skill. The former DSH (Cordis) plugin bundle is archived in
-> [`archive/plugin/`](archive/plugin/README.md) at git tag `archive-plugin-v0.5.0`.
+> Status: **v1.0.0** — runtime + self-contained skill. The former DSH (Cordis) plugin bundle is
+> archived in [`archive/plugin/`](archive/plugin/README.md) at git tag `archive-plugin-v0.5.0`.
 
-## Why a CLI instead of a plugin
+## Why scripts inside the skill
 
 The original delivery was a DeepSeek Harness host bundle with nine `obsidian_devkit_*` tools. Almost
-all of that logic was already plain Node — only the host wrapper was harness-specific. The plugin
-form cost a profile install, a host-module reload after every change, and a coupling to the host tool
-API, while the actual capability is "run these checks on a plugin project".
+all of that logic was already plain Node — only the host wrapper was harness-specific. v1.0.0 keeps
+the proven core and ships it **inside the skill** as `scripts/`, with an optional CLI face for humans
+and CI.
 
-So v1.0.0 keeps the proven core and exposes it twice: as a normal CLI for humans, CI and scripts, and
-as a skill for agents (which bring their own shell). The plugin bundle is preserved for reference
-only.
+The skill therefore works from a folder copy: no npm registry package, no global install, no network
+at runtime beyond what the plugin project itself needs.
 
-## Install
+## Use it
 
-```bash
-# CLI (Node >= 20)
-npm install -g @knink-owo/dsh-obsidian-plugin-devkit
-obsidian-devkit --version
-
-# or without installing
-npx @knink-owo/dsh-obsidian-plugin-devkit --version
-
-# from a checkout
-npm install && npm run build && npm link
-```
-
-Install the agent skill into the DSH skills directory (default `~/.dsh/skills`, or `$DSH_HOME/skills`,
-or `$OBSIDIAN_DEVKIT_SKILLS_DIR`):
+**From the skill (recommended for agents):**
 
 ```bash
-obsidian-devkit install-skill          # --force to replace, --skills-dir <dir> to override
+cd skill/obsidian-plugin-dev
+node scripts/devkit.mjs --version
+node scripts/devkit.mjs scaffold ./my-plugin --id my-plugin --name "My Plugin" --author "Jane"
 ```
 
-A skill installed this way is discovered by the harness like any other skill; the skill body tells
-the agent when and how to call `obsidian-devkit`.
+**From a checkout (for humans/CI):**
+
+```bash
+npm install
+npm run build            # also runs scripts/sync-skill-runtime.mjs
+node lib/commandline.js --version
+# optional: npm link      -> obsidian-devkit
+```
+
+There is no required global install. The skill's `scripts/` folder is fully self-contained (Node >=
+20, no third-party runtime dependencies); `node scripts/devkit.mjs` works without `npm install`.
+
+To install the skill, copy the whole `skill/obsidian-plugin-dev/` folder into your skills directory
+(for DSH: `~/.dsh/skills/`). The runtime travels in `scripts/`; there is nothing else to install.
 
 Optional, for live reload only: Obsidian **>= 1.12.4** with *Settings → General → Command line
 interface* enabled and the app already running. Everything else works with Obsidian closed.
@@ -55,19 +56,26 @@ interface* enabled and the app already running. Everything else works with Obsid
 ## Quick start
 
 ```bash
-obsidian-devkit scaffold ./my-plugin --id my-plugin --name "My Plugin" --author "Jane"
+cd skill/obsidian-plugin-dev
+node scripts/devkit.mjs scaffold ./my-plugin --id my-plugin --name "My Plugin" --author "Jane"
 cd my-plugin && pnpm install
-obsidian-devkit build .
-obsidian-devkit test .              # L2 isolated smoke (no Obsidian needed)
-obsidian-devkit deploy .            # writes into the workspace dev-vault
-obsidian-devkit reload .            # if Obsidian is running with the CLI enabled
-obsidian-devkit validate .          # pre-delivery audit
+node ../scripts/devkit.mjs build .
+node ../scripts/devkit.mjs test .       # L2 isolated smoke (no Obsidian needed)
+node ../scripts/devkit.mjs deploy .     # writes into the workspace dev-vault
+node ../scripts/devkit.mjs reload .     # if Obsidian is running with its CLI enabled
+node ../scripts/devkit.mjs validate .   # pre-delivery audit
 ```
 
 Reports are Chinese Markdown; the exit code is the machine signal (`0` ok, `1` failed, `2` usage).
-Every command is documented in the skill's `reference/cli.md` and in `obsidian-devkit help`.
+Some report strings still say `obsidian-devkit`; execute the local `scripts/devkit.mjs` entry. Every
+command is documented in [`skill/obsidian-plugin-dev/reference/cli.md`](skill/obsidian-plugin-dev/reference/cli.md)
+and in `node scripts/devkit.mjs help`.
+
 
 ## Commands
+
+Run these through `node scripts/devkit.mjs <command>` from the skill folder, or
+`node lib/commandline.js <command>` from a built checkout.
 
 | Command | What it does |
 | --- | --- |
@@ -80,7 +88,6 @@ Every command is documented in the skill's `reference/cli.md` and in `obsidian-d
 | `reload [dir]` | Official CLI only: `reload` / `rescan` / `enable` / `disable`. Verifies with a read-only query; reports CLI quirks honestly (errors exit 0, hangs print nothing). |
 | `test <dir>` | L2 smoke: loads the built `main.js` in an isolated Node VM with stubbed `obsidian`/`electron`/CodeMirror modules; optionally instantiates and calls `onload`/`onunload` under a timeout. |
 | `e2e <dir>` | Writes or audits a **sandboxed** WebdriverIO + wdio-obsidian-service harness (isolated config dir, throwaway vault copy, generated spec, merged devDependencies). Never runs the suite. |
-| `install-skill` | Copies the bundled `obsidian-plugin-dev` skill into a DSH skills directory. |
 
 ### Deployment vs live reload
 
@@ -111,10 +118,14 @@ A green build proves almost nothing. The skill enforces four layers:
 ## The skill
 
 [`skill/obsidian-plugin-dev/`](skill/obsidian-plugin-dev/SKILL.md) is self-contained: `SKILL.md` is
-the workflow and the hard rules, `reference/cli.md` is the complete CLI fallback reference, and
-`reference/{submission,settings,lifecycle,verification,debugging}.md` carry the official rules and the
-API patterns. `install-skill` copies it into a skills directory; the agent loads the reference files
-on demand.
+the workflow and the hard rules, `scripts/` is the vendored runtime, `reference/cli.md` is the complete
+command fallback reference, and `reference/{submission,settings,lifecycle,verification,debugging}.md`
+carry the official rules and the API patterns. Copy the folder into a skills directory; the agent
+loads the reference files on demand. There is no `install-skill` step and no global CLI required.
+
+> Legacy note: the built `lib/commandline.js` still accepts an `install-skill` subcommand for older
+> devkit users, and some report strings still say `obsidian-devkit`. The supported path is
+> `node scripts/devkit.mjs`; `install-skill` is not part of the skill workflow.
 
 The skill also states the non-negotiable boundaries: never cold-start Obsidian, never steal focus,
 never enable/disable a user's plugins unasked, report "unknown" instead of guessing, and never write a

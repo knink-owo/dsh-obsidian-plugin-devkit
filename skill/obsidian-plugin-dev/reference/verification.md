@@ -3,7 +3,7 @@
 One green build proves almost nothing. Check each layer, and never promote a
 claim to the next layer without evidence at the current one.
 
-## L1 — static (`obsidian-devkit build`, `validate`)
+## L1 — static (`node scripts/devkit.mjs build`, `validate`)
 
 - Build exits 0 and emits `main.js`.
 - `main.js` is CommonJS: it has `module.exports` / `exports.` and a
@@ -13,7 +13,7 @@ claim to the next layer without evidence at the current one.
 - `validate` warnings are real findings, not trivia; fix or knowingly accept
   each one.
 
-## L2 — isolated smoke (`obsidian-devkit test`)
+## L2 — isolated smoke (`node scripts/devkit.mjs test`)
 
 `--scenario load` executes the bundle against a stubbed `obsidian` module;
 `--scenario onload` / `unload` also instantiate the plugin and await
@@ -33,7 +33,7 @@ compatibility — the bundle runs against stubs, not Obsidian.
 - Reload/rescan paths need Obsidian running with the CLI enabled
   (>= 1.12.4). If any of that is missing, report the limitation; never open the
   app yourself and never pretend it worked.
-- `obsidian-devkit e2e <dir>` (action `init`) writes a reviewable
+- `node scripts/devkit.mjs e2e <dir>` (action `init`) writes a reviewable
   `wdio-obsidian-service` harness into the project: `wdio.conf.mts`, a
   generated spec, a fixture vault, `e2e/tsconfig.json`, merged devDependencies
   and a `test:e2e` script. Action `status` audits it read-only. The command never
@@ -49,6 +49,6 @@ Markdown renders. An agent cannot claim L4 without a human or a screenshot.
 ## Honest reporting
 
 - "unknown" is a valid result. Prefer it to a guess.
-- A silent CLI success is not verification: confirm with a read-only query.
-- When the CLI prints `Error:` it still exits 0 — classify by output text.
+- A silent command success is not verification: confirm with a read-only query.
+- When the reload command prints `Error:` it still exits 0 — classify by output text.
 - An empty output can mean the call hung; treat it as timeout, not success.

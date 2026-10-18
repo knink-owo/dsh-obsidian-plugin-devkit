@@ -1,0 +1,7 @@
+{
+  "name": "obsidian-plugin-dev-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vendored obsidian-devkit runtime 1.0.0 for the obsidian-plugin-dev skill."
+}

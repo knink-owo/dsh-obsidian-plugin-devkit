@@ -31,7 +31,7 @@ appended, never rewritten.
 
 ## Release
 
-1. Bump the version (`obsidian-devkit version <dir> <semver>`), commit
+1. Bump the version (`node scripts/devkit.mjs version <dir> <semver>`), commit
    `manifest.json`, `package.json` and `versions.json` together.
 2. Create a GitHub release whose **tag equals the manifest version** exactly —
    `1.2.0`, not `v1.2.0` and not `1.2.0-beta.1`.
@@ -53,7 +53,7 @@ appended, never rewritten.
 ## Review gotchas seen in practice
 
 - Description punctuation and length are the most common mechanical rejections;
-  run `obsidian-devkit validate <dir>` before tagging.
+  run `node scripts/devkit.mjs validate <dir>` before tagging.
 - `main.js` must be CommonJS. If the build emits an ES module, Obsidian fails
   to load it with a `module is not defined`-style error.
 - `styles.css` referenced but missing (or the reverse) breaks the store listing.

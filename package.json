@@ -1,7 +1,7 @@
 {
   "name": "@knink-owo/dsh-obsidian-plugin-devkit",
   "version": "1.0.0",
-  "description": "Obsidian community plugin development toolkit: the `obsidian-devkit` CLI plus an agent skill covering scaffold, build, validate, version, deploy, live reload, isolated L2 smoke tests and a sandboxed WebdriverIO e2e harness.",
+  "description": "Obsidian community plugin development toolkit: a self-contained agent skill with vendored scripts covering scaffold, build, validate, version, deploy, live reload, isolated L2 smoke tests and a sandboxed WebdriverIO e2e harness.",
   "type": "module",
   "bin": {
     "obsidian-devkit": "./lib/commandline.js"
@@ -27,6 +27,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "postbuild": "node scripts/sync-skill-runtime.mjs",
+    "sync:skill": "node scripts/sync-skill-runtime.mjs",
     "clean": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\"",
     "pretest": "npm run build",
     "test": "node --test --test-isolation=none test/naming.test.mjs test/templates.test.mjs test/scaffold.test.mjs test/version.test.mjs test/vault.test.mjs test/cli.test.mjs test/deploy.test.mjs test/status.test.mjs test/reload.test.mjs test/smoke.test.mjs test/e2e.test.mjs test/commandline.test.mjs",
