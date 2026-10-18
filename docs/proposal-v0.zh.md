@@ -279,4 +279,38 @@ schema must be a JSON Schema of 'type: "object"', got 'type: null'.
 
 **测试**：`npm test` 64 项全过（新增 `vault/cli/deploy/status/reload` 五个套件；`plugin.test.mjs` 更新为 7 工具断言）。`deploy` 覆盖写入/合并/幂等/`dryRun`/默认 dev-vault 创建/`pluginId` 冲突；`reload` 覆盖未运行、CLI 不可用、静默错误、超时、前台 vault 警告。
 
-**M2 剩余**：只读 `test`（L2 冒烟：加载 `main.js` 于隔离 vm、检查 `onload` 存在）、`e2e`（WebdriverIO + wdio-obsidian-service，独立 config dir）、`obsidian-plugin-dev` skill + `doc/harness.default.md` 上下文注入、npm 发布（M4）。
+**M2 剩余**：只读 `test`（L2 冒烟：加载 `main.js` 于隔离 vm、检查 `onload` 存在）、`e2e`（WebdriverIO + wdio-obsidian-service，独立 config dir）、npm 发布（M4）。
+
+---
+
+## 12. M2 实施记录（第二批：skill + 会话上下文注入，0.3.0）
+
+**版本**：`0.3.0`（本地 link 安装；本仓库自身不是 Obsidian 插件，无 manifest/versions.json，因此版本只同步 `package.json`）。
+
+**宿主服务契约（2026-10-18 通过 `cordis_inspect_query` 读取）**：
+
+- `skills`：`register(skill: SkillRegistration): () => void`；`SkillRegistration = Omit<SkillDefinition,'invocation'|'provider'> & { invocation?, provider? }`；必填 `name`、`description`、`content`；可选 `whenToUse`、`source`、`resourceBase`（`{kind:'directory', path}` 让 reference 文件按需加载）、`metadata`。同层重名 first-wins；`ctx.get("skills")` 可选访问。
+- `systemPrompt`：`context(context: PromptContext): () => void`；`PromptContext` 必填 `name`、`order`（有限数字）、`text`（string 或 `(ctx)=>string`），可选 `interpolate`、`required`；`section()` 同形状。scoped 覆盖 global；同层重名抛错。`getSectionOrder`/`getContextOrder` 只服务于仓库内置段落名。
+
+**新增内容**：
+
+| 文件 | 作用 |
+| --- | --- |
+| `assets/skills/obsidian-plugin-dev/SKILL.md` | 技能主体：适用场景、7 步工作流、工具映射表、硬性规则、reference 索引。 |
+| `assets/skills/obsidian-plugin-dev/reference/{submission,settings,lifecycle,verification,debugging}.md` | 官方命名/发布规则、声明式 vs legacy 设置、生命周期与 vault API、四层验证、CLI 排错与症状→动作表。 |
+| `assets/docs/harness.default.md` | 注入的会话上下文文本（中文）：安全边界、分层验证、CLI 语义、发布规则。 |
+| `src/skill.ts` | frontmatter 子集解析、`skillFromText`/`bundledSkill`、`registerSkill`（缺失服务静默跳过，注册抛错只 warn）。 |
+| `src/context.ts` | 读取上下文资产（缺失回退内置常量）、`registerDevContext` 优先 `context()` 再 `section()`，order 250，非有限数拒绝。 |
+
+**设计决策**：
+
+1. **两个可选服务都 best-effort**：`ctx.get()` 拿不到就静默跳过；宿主拒绝注册只 `logger.warn`，绝不影响 7 个工具。这样插件在无 skill / 只读 prompt 的宿主上仍然可用。
+2. **skill 正文 + reference 分离**：正文给出决策与顺序，规则细节放 `reference/`，通过 `resourceBase.directory` 按需加载，避免每次会话把整本规则塞进上下文。
+3. **上下文文本外置为资产**：`harness.default.md` 可改而无需重新编译；代码内保留最小回退文本。
+4. **不扩展 config**：skill/context 无开关，保持安装即用；如未来需要禁用再加 config key（需同步 `cordis.patch.yml`）。
+
+**测试**：`npm test` 76 项全过（新增 `skill.test.mjs`、`context.test.mjs`；`plugin.test.mjs` 增加「有服务时注册 1 个 skill + 1 条 context」「无任何可选服务也不抛错」两项 wiring）。测试直接断言 `SKILL.md` frontmatter、每个 reference 文件存在且非空、上下文文本来自资产而非回退、注册异常被降级。
+
+**验证**：`tsc` 编译通过；`npm test` 76/76；插件已 link 安装在 desktop profile（v0.3.0）。宿主是否加载新代码需重启或在下一轮真实会话确认——`Tool.listTools` 只能验证工具；skill/context 需在**新会话**的系统提示与技能目录中确认。
+
+**M2 剩余**：`test`（L2 冒烟：隔离 vm + 桩 `obsidian` 模块加载 `main.js`）、`e2e`（WebdriverIO + wdio-obsidian-service）、npm 发布（M4）。

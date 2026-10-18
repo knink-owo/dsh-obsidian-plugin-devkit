@@ -8,9 +8,10 @@ submitted to the community directory without name/description/version rejections
 background watcher, never starts Obsidian on its own and never touches a vault the user did not point
 it at.
 
-> Status: **v0.2.0 (M2 in progress)** — scaffold, build, validate, version, deploy to a vault,
-> environment status and CLI-backed reload. The sandboxed e2e runner (`test`) and the model-facing
-> skill arrive later in M2.
+> Status: **v0.3.0 (M2 in progress)** — scaffold, build, validate, version, deploy to a vault,
+> environment status, CLI-backed reload, plus the bundled `obsidian-plugin-dev` development-guideline
+> skill and an injected session context. The read-only `test` smoke tool and the sandboxed e2e
+> runner arrive later in M2.
 
 ## Install
 
@@ -53,6 +54,25 @@ Two independent channels, and the reports never mix them up:
 
 If `obsidian` is not on `PATH`, set `OBSIDIAN_CLI` to the executable (for example
 `...\Obsidian\Obsidian.com`) or configure `obsidianCli` below.
+
+## Skill and session context
+
+Two optional host services are used when present; both are strictly best-effort, so a host without
+them keeps the seven tools and loses nothing else:
+
+- **`obsidian-plugin-dev` skill** — registered through `skills.register` with `source: "runtime"`. Its
+  body is the development workflow; `assets/skills/obsidian-plugin-dev/reference/` carries the
+  official submission rules, the declarative-vs-legacy settings gate, lifecycle/API patterns, the
+  layered verification loop (L1 static → L2 isolated smoke → L3 real vault → L4 human check) and the
+  CLI debugging quirks. The skill directory is exposed as the resource base, so reference files load
+  on demand instead of inflating the tool list.
+- **Session context** — one `systemPrompt` context entry (`obsidian-plugin-devkit`, order 250) that
+  states the safety boundaries: never cold-start Obsidian, never steal focus, never enable/disable a
+  user's plugins unasked, report "unknown" instead of guessing, and verify in layers.
+
+The context text lives in `assets/docs/harness.default.md` so it can be edited without a rebuild;
+the compiled-in fallback keeps registration working if the asset is missing. Both registrations are
+skipped silently when the host service is absent and logged (not thrown) when a host rejects them.
 
 ## Scaffold layouts
 
@@ -106,8 +126,11 @@ The full checklist and the M1 schema-bug postmortem live in
 ## Layout
 
 ```
-src/                 host plugin: index.ts (cordis entry), tools, fs wrapper, proc runner
+src/                 host plugin: index.ts (cordis entry), tools, fs wrapper, proc runner,
+                     cli/vault/deploy/status/reload channels, skill + context registration
 assets/templates/    files written by scaffold (placeholders like {{PLUGIN_ID}})
+assets/skills/       obsidian-plugin-dev SKILL.md + reference/ (registered into `skills`)
+assets/docs/         harness.default.md (injected session context text)
 lib/                 compiled output (gitignored)
 docs/                research notes and the design proposal
 test/                node:test suites
@@ -117,9 +140,9 @@ cordis.patch.yml     bundle patch: insert { id: obsidian-plugin-devkit, ... }
 ## Roadmap
 
 - **M1 (done)** scaffold / build / validate / version.
-- **M2 (in progress)** deploy to a development vault, `status`/`reload` via the official CLI —
-  implemented and tested; still to come: the read-only `test` smoke tool, sandboxed e2e
-  (WebdriverIO + wdio-obsidian-service), and the `obsidian-plugin-dev` skill + harness context.
+- **M2 (in progress)** deploy to a development vault, `status`/`reload` via the official CLI, and the
+  `obsidian-plugin-dev` skill + session context — implemented and tested (76 tests). Still to come:
+  the read-only `test` smoke tool (L2) and sandboxed e2e (WebdriverIO + wdio-obsidian-service).
 - **M3** API reference resource and submission automation.
 
 ## License

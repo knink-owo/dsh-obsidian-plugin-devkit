@@ -82,3 +82,29 @@ test("validate fails softly on a missing directory", async () => {
   const report = await tool.execute({ projectDir: ".devkit/does-not-exist" }, undefined);
   assert.match(report, /does not exist|not found|Missing|FAIL/i);
 });
+
+test("apply also registers the dev skill and the session context when the host exposes them", () => {
+  const registered = [];
+  const skills = [];
+  const contexts = [];
+  const ctx = {
+    tools: { register: (tool) => registered.push(tool) },
+    get: (service) => {
+      if (service === "skills") return { register: (skill) => skills.push(skill) };
+      if (service === "systemPrompt") return { context: (entry) => contexts.push(entry) };
+      return undefined;
+    },
+  };
+  apply(ctx);
+  assert.equal(registered.length, 7);
+  assert.equal(skills.length, 1);
+  assert.equal(skills[0].name, "obsidian-plugin-dev");
+  assert.equal(contexts.length, 1);
+  assert.match(contexts[0].text, /obsidian_devkit_/);
+});
+
+test("apply works with no optional services at all", () => {
+  const registered = [];
+  assert.doesNotThrow(() => apply({ tools: { register: (tool) => registered.push(tool) } }));
+  assert.equal(registered.length, 7);
+});

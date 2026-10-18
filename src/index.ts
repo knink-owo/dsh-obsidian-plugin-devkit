@@ -8,9 +8,11 @@
 import { readAsset } from "./fs.js";
 import { Fs } from "./fs.js";
 import { buildPlugin } from "./build.js";
+import { registerDevContext } from "./context.js";
 import { deployPlugin } from "./deploy.js";
 import { reloadActionValues, reloadLive, type ReloadAction } from "./reload.js";
 import { scaffold } from "./scaffold.js";
+import { registerSkill } from "./skill.js";
 import { statusReport } from "./status.js";
 import { validateProject } from "./validate.js";
 import { bumpVersion } from "./version.js";
@@ -500,7 +502,9 @@ export function apply(ctx: DevkitContext, config?: Partial<DevkitConfig>): void 
   for (const tool of tools(ctx, fs, resolved)) {
     ctx.tools.register(tool);
   }
+  registerSkill(ctx);
+  registerDevContext(ctx);
 }
 
 /** Kept for tests and for future M2 tooling: bundle assets are read from `assets/`. */
-export { readAsset };
+export { readAsset, registerDevContext, registerSkill };

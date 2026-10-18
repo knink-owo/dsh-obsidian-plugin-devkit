@@ -1,6 +1,6 @@
 {
   "name": "@knink-owo/dsh-obsidian-plugin-devkit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Obsidian community plugin development capabilities for DeepSeek Harness agents: scaffolding, building, validation, versioning, deployment to a vault, and live reload through the official CLI.",
   "type": "module",
   "main": "./lib/index.js",
@@ -28,7 +28,7 @@
     "build": "tsc -p tsconfig.json",
     "clean": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\"",
     "pretest": "npm run build",
-    "test": "node --test --test-isolation=none test/naming.test.mjs test/templates.test.mjs test/scaffold.test.mjs test/version.test.mjs test/vault.test.mjs test/cli.test.mjs test/deploy.test.mjs test/status.test.mjs test/reload.test.mjs test/plugin.test.mjs",
+    "test": "node --test --test-isolation=none test/naming.test.mjs test/templates.test.mjs test/scaffold.test.mjs test/version.test.mjs test/vault.test.mjs test/cli.test.mjs test/deploy.test.mjs test/status.test.mjs test/reload.test.mjs test/skill.test.mjs test/context.test.mjs test/plugin.test.mjs",
     "prepack": "npm run build"
   },
   "dsh": {
