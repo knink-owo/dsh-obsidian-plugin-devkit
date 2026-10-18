@@ -1,0 +1,11 @@
+# dsh-obsidian-plugin-devkit
+# Obsidian community plugin development toolkit for DSH agents.
+# Installed as a host-only Cordis bundle; no Client/UI half.
+- insert:
+    - id: obsidian-plugin-devkit
+      name: '@knink-owo/dsh-obsidian-plugin-devkit'
+      config:
+        defaultMinAppVersion: '1.13.0'
+        testVault: dev-vault
+        packageManager: pnpm
+        enableCli: true

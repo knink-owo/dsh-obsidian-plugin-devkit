@@ -1,0 +1,10 @@
+node_modules/
+lib/
+.npm-cache/
+.research/
+.devkit/
+dev-vault/
+*.log
+.DS_Store
+.pnpm-store/
+research/
