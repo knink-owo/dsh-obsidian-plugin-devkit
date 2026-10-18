@@ -7,7 +7,7 @@ plugin correctly, so the plugin it produces can be loaded in Obsidian and submit
 directory without name/description/version rejections. It only adds four tools; it never touches your
 vault and never runs a watcher.
 
-> Status: **v0.1.0 (M1)** — scaffold, build, validate, version. Deployment to a development vault,
+> Status: **v0.1.1 (M1)** — scaffold, build, validate, version. Deployment to a development vault,
 > `status`/`reload`, sandboxed e2e and the model-facing skill arrive in M2.
 
 ## Install
@@ -68,6 +68,12 @@ npm test           # build + node --test (no child processes needed)
 Notes for this repository's test setup: the test runner uses `--test-isolation=none` because the
 DSH sandbox forbids Node's default per-file child process. Tests use the Node `fs` fallback of
 `Fs` (no DSH context needed).
+
+## DSH contract notes
+
+Tool schemas must be object-root JSON Schema (), and
+ is a function. The full checklist and the M1 schema-bug postmortem live in
+[docs/dsh-plugin-guide.zh.md](docs/dsh-plugin-guide.zh.md).
 
 ## Layout
 

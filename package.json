@@ -1,6 +1,6 @@
 {
   "name": "@knink-owo/dsh-obsidian-plugin-devkit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Obsidian community plugin development capabilities for DeepSeek Harness agents: scaffolding, building, validation and versioning.",
   "type": "module",
   "main": "./lib/index.js",
@@ -10,12 +10,15 @@
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
     "assets",
-    "doc",
+    "locale/*.json",
+    "icon.svg",
     "cordis.patch.yml"
   ],
   "engines": {
@@ -31,16 +34,7 @@
       "patch": "./cordis.patch.yml"
     }
   },
-  "peerDependencies": {
-    "@deepseek-ai/schemastery": "^3.18.4"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/schemastery": {
-      "optional": true
-    }
-  },
   "devDependencies": {
-    "@deepseek-ai/schemastery": "^3.18.4",
     "@types/node": "^22.15.17",
     "typescript": "^5.8.3"
   }

@@ -22,6 +22,12 @@ test("apply registers exactly the four M1 tools", () => {
     ],
   );
   for (const tool of registered) {
+    // The harness projects  verbatim as the model-facing function schema.
+    // A flat map would reach the model as { type: null } and the request would be rejected.
+    assert.equal(tool.parameters.type, "object", tool.name + " parameters must be a JSON Schema object root");
+    assert.equal(typeof tool.parameters.properties, "object");
+    assert.equal(tool.parameters.additionalProperties, false);
+    assert.equal(typeof tool.isConcurrencySafe, "function");
     assert.equal(typeof tool.description, "string");
     assert.ok(tool.description.length > 60, `${tool.name} description is too short`);
     assert.equal(typeof tool.execute, "function");

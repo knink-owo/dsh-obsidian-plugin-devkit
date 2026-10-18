@@ -216,3 +216,33 @@ M1 范围（Round 2 后用户批准立即开工）：**scaffold / build / valida
 ### M2 入口（下一步）
 
 deploy（写入 `<vault>/.obsidian/plugins/<id>/`，默认 workspace 内 `dev-vault/`）→ `status`/`reload`（官方 CLI，缺失时降级）→ 沙箱 e2e（WebdriverIO + wdio-obsidian-service，独立 config dir）→ `obsidian-plugin-dev` skill + `doc/harness.default.md` 会话上下文注入。
+
+---
+
+## 10. 事故修复记录：工具 schema 不是 JSON Schema 对象根（2026-10-18）
+
+**现象**：插件安装启用后，用户侧下一轮请求直接失败（模型 API 400）：
+
+```
+Invalid schema for function 'obsidian_devkit_build':
+schema must be a JSON Schema of 'type: "object"', got 'type: null'.
+```
+
+用户已停用插件，要求重新核对 DSH 插件设计指南。
+
+**根因**：`ctx.tools.register` 的 `ToolDefinition.parameters` 被 DSH **原样投影**为模型函数的参数 schema。M1 代码传入的是扁平 DSL（`{ targetDir: { type: "string", required: true } }`），投影后模型看到 `{"type": null}`，请求被拒。参考实现没有踩坑，是因为它用了 `@deepseek-ai/dsh-tools` 的 `defineTool` helper（内部会包一层对象根）；我们手写注册，少包了这一层。
+
+**修复**（版本号计划 0.1.1，尚未发版）：
+
+1. `src/types.ts`：`parameters` 类型改为 `JsonSchemaNode`（对象根）；新增 `objectSchema()` 包装器（`required` 数组 + `additionalProperties: false`）。
+2. `src/index.ts`：4 个工具全部 `parameters: objectSchema({...})`；`isConcurrencySafe` 从布尔改为 `(args) => boolean`（DSH 实际类型如此）。
+3. `test/plugin.test.mjs`：新增断言 `parameters.type === "object"`、`properties` 为对象、`isConcurrencySafe` 为函数；全仓 26 + 5 = 31 项测试全过。
+4. 补齐展示元数据：`locale/en.json`、`locale/zh.json`、`icon.svg`，`package.json` 增加 `exports["./locale/*.json"]`、`exports["./icon"]` 与对应 `files` 条目。
+5. 移除未使用的 `@deepseek-ai/schemastery` peer/dev 依赖（M1 未导出 `Config`，避免 profile 里 peer 解析警告）。
+
+**教训**（已写入 `docs/dsh-plugin-guide.zh.md`）：
+
+- 插件「注册成功」≠「模型可用」：工具 schema 的合法性要到下一轮模型请求才暴露，安装后必须重启宿主并真实调一次工具才能验收。
+- 手写 `ctx.tools.register` 时 `parameters` 必须是 `{ type: "object", properties, required }`；扁平 DSL 只属于 `defineTool` helper。
+- `isConcurrencySafe` 是函数 `(args) => boolean`，`timeoutMs` 是毫秒数，`output.schema` 是**结果值**的 JSON Schema。
+- 安装/替换插件后用 `plugin_manager list_plugins` 看 `fiberPhase === "active"`；`application: failed` 时先按 `nextStep` 修。

@@ -12,6 +12,7 @@ import { scaffold } from "./scaffold.js";
 import { validateProject } from "./validate.js";
 import { bumpVersion } from "./version.js";
 import { compareSemver } from "./naming.js";
+import { objectSchema } from "./types.js";
 import type {
   DevkitContext,
   FsCall,
@@ -105,7 +106,7 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
   const scaffoldTool: ToolDefinition = {
     name: "obsidian_devkit_scaffold",
     description: SCAFFOLD_DESCRIPTION,
-    parameters: {
+    parameters: objectSchema({
       targetDir: {
         type: "string",
         required: true,
@@ -161,9 +162,9 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
         enum: ["pnpm", "npm", "yarn", "bun"],
         description: `Package manager used in the generated README/AGENTS instructions (default ${config.packageManager}).`,
       },
-    },
+    }),
     output: textOutput,
-    isConcurrencySafe: false,
+    isConcurrencySafe: () => false,
     async execute(args, exec) {
       const id = stringArg(args, "id");
       const displayName = stringArg(args, "name");
@@ -197,7 +198,7 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
   const buildTool: ToolDefinition = {
     name: "obsidian_devkit_build",
     description: BUILD_DESCRIPTION,
-    parameters: {
+    parameters: objectSchema({
       projectDir: {
         type: "string",
         required: true,
@@ -219,9 +220,9 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
         type: "number",
         description: "Build timeout in milliseconds (default 300000).",
       },
-    },
+    }),
     output: textOutput,
-    isConcurrencySafe: false,
+    isConcurrencySafe: () => false,
     async execute(args, exec) {
       const projectDir = stringArg(args, "projectDir");
       if (projectDir === undefined) return "Build requires a non-empty projectDir parameter.";
@@ -245,15 +246,15 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
   const validateTool: ToolDefinition = {
     name: "obsidian_devkit_validate",
     description: VALIDATE_DESCRIPTION,
-    parameters: {
+    parameters: objectSchema({
       projectDir: {
         type: "string",
         required: true,
         description: "Plugin project directory (workspace-relative or absolute).",
       },
-    },
+    }),
     output: textOutput,
-    isConcurrencySafe: true,
+    isConcurrencySafe: () => true,
     async execute(args, exec) {
       const projectDir = stringArg(args, "projectDir");
       if (projectDir === undefined) return "Validate requires a non-empty projectDir parameter.";
@@ -265,7 +266,7 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
   const versionTool: ToolDefinition = {
     name: "obsidian_devkit_version",
     description: VERSION_DESCRIPTION,
-    parameters: {
+    parameters: objectSchema({
       projectDir: {
         type: "string",
         required: true,
@@ -280,9 +281,9 @@ function tools(ctx: DevkitContext, fs: Fs, config: DevkitConfig): ToolDefinition
         type: "string",
         description: "Optional new minAppVersion (semver). Omit to keep the current one.",
       },
-    },
+    }),
     output: textOutput,
-    isConcurrencySafe: false,
+    isConcurrencySafe: () => false,
     async execute(args, exec) {
       const projectDir = stringArg(args, "projectDir");
       const version = stringArg(args, "version");
