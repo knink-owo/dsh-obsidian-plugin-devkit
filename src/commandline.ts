@@ -523,7 +523,7 @@ async function installSkillCommand(parsed: ParsedArgs, io: CliIO): Promise<numbe
     io.out(`Installed obsidian-plugin-dev skill (${written.length} files) into ${target}\n`);
     io.out(
       "Start a new agent session (or reload skills) so the catalog picks it up: " +
-        "the skill tells the agent when to call `obsidian-devkit`.\n",
+        "the skill tells the agent when to call `node scripts/devkit.mjs`.\n",
     );
     return 0;
   } catch (error) {

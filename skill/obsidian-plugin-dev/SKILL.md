@@ -1,7 +1,7 @@
 ---
 name: obsidian-plugin-dev
-description: 'Develop, build, deploy and validate an Obsidian community plugin with vendored local scripts, the official submission rules, and the layered verification loop (static checks, then an isolated bundle smoke, then a real vault). Use when creating or maintaining an Obsidian plugin, diagnosing why a plugin does not load, or preparing a plugin release.'
-whenToUse: 'Use when the task involves an Obsidian community plugin: new plugin, main.js/CommonJS build, manifest.json, settings tab, deployment to a vault, live reload through the official Obsidian CLI, or a release/submission checklist. Not for plain Markdown vault editing.'
+description: 'Develop, build, deploy and validate an Obsidian community plugin with vendored local scripts, the official submission rules, and the layered verification loop (static checks, then an isolated bundle smoke, then a real vault). Includes the community.obsidian.md submission flow and the Canvas/DevTools probing rules learned from real releases. Use when creating or maintaining an Obsidian plugin, diagnosing why a plugin does not load, or preparing a plugin release.'
+whenToUse: 'Use when the task involves an Obsidian community plugin: new plugin, main.js/CommonJS build, manifest.json, settings tab, deployment to a vault, live reload through the official Obsidian CLI, release/submission through community.obsidian.md, scripted UI verification over CDP, or plugins that extend Canvas internals. Not for plain Markdown vault editing.'
 license: MIT
 ---
 
@@ -66,9 +66,16 @@ node scripts/devkit.mjs --version
 6. **Version + release** — `node scripts/devkit.mjs version <dir> <semver>`
    syncs manifest.json, package.json and versions.json. Release tag = manifest
    version (no `v`), GitHub release assets = `main.js`, `manifest.json`,
-   `styles.css`.
-7. **Submit** — see `reference/submission.md`; review is automated now, so the
-   rules below are enforced mechanically.
+   `styles.css`. The tag can drive CI, but verify the published files rather
+   than the Actions UI: download the release assets and compare hashes
+   (`gh release download`, then sha256). A run can show a stale `queued` state
+   while the release already exists. See `reference/submission.md`.
+7. **Submit** — through <https://community.obsidian.md>, not a pull request.
+   `obsidianmd/obsidian-releases` mirrors `community-plugins.json` hourly, so a
+   manual PR is overwritten. A human signs in with an Obsidian account, links
+   the owning GitHub account, and adds the plugin; an automated review follows
+   the manifest at the HEAD of the default branch. See
+   `reference/submission.md`.
 
 ## Command map
 
@@ -100,6 +107,12 @@ For every flag, environment variable and exit code see `reference/cli.md`.
 - `minAppVersion` must be a version you actually test; the declarative settings
   API needs 1.13.0+.
 - The release tag must equal `manifest.json` version exactly.
+- Do not open a pull request against `obsidianmd/obsidian-releases` to publish a
+  plugin; submissions go through `community.obsidian.md` (the JSON file there is
+  a mirror).
+- Scripted UI tests must not leave the user's workspace changed: no stray nodes,
+  notes, tabs, pop-outs, filters or plugin toggles. Restore the layout and
+  verify it in a screenshot when done.
 - Never cold-start Obsidian, never steal window focus, never enable/disable a
   user's plugins without being asked. The scripts act on the frontmost vault.
 - Vault file writes go through `app.vault` APIs; never write with Node `fs`
@@ -113,5 +126,8 @@ For every flag, environment variable and exit code see `reference/cli.md`.
 - `reference/submission.md` — naming, manifest, release and policy rules.
 - `reference/settings.md` — declarative vs legacy settings.
 - `reference/lifecycle.md` — onload/onunload, commands, events, vault writes.
-- `reference/verification.md` — the layered loop and what each layer proves.
+- `reference/verification.md` — the layered loop and what each layer proves,
+  including scripted UI probing over the DevTools protocol (L3.5).
 - `reference/debugging.md` — runtime quirks, hot reload, common failure signatures.
+- `reference/canvas.md` — verified map of Canvas internals for plugins that add
+  card/node chrome, plus the click/DOM-sync rules.

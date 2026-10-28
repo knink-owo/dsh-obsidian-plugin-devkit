@@ -34,11 +34,50 @@ appended, never rewritten.
 1. Bump the version (`node scripts/devkit.mjs version <dir> <semver>`), commit
    `manifest.json`, `package.json` and `versions.json` together.
 2. Create a GitHub release whose **tag equals the manifest version** exactly —
-   `1.2.0`, not `v1.2.0` and not `1.2.0-beta.1`.
+   `1.2.0`, not `v1.2.0` and not `1.2.0-beta.1`. Note that `pnpm version` and
+   `npm version` create a `v`-prefixed tag by default; tag by hand or strip the
+   prefix before pushing.
 3. Attach exactly three assets: `main.js`, `manifest.json`, `styles.css` (the
    last one only if the plugin ships styles). Obsidian only ever downloads
    these files; no zip.
-4. The official GitHub Actions workflow can do build + release on tag push.
+4. Tags can drive the whole release from CI. A working workflow does:
+   `pnpm install --frozen-lockfile` -> `pnpm run build` -> `pnpm run lint` ->
+   fail unless the pushed tag equals `manifest.json` version -> create/update the
+   release with `softprops/action-gh-release` and attach the three files.
+5. **Verify the release, not the Actions tab.** The run list can lag and even
+   show a stale `queued` run while the release already exists. Download and
+   compare hashes instead:
+
+   ```bash
+   gh release download <version> -D /tmp/release-check
+   sha256sum main.js /tmp/release-check/main.js
+   ```
+
+## Submit through community.obsidian.md (not a PR)
+
+There is **no pull request to `obsidianmd/obsidian-releases` anymore**.
+`community-plugins.json` in that repository is regenerated hourly from
+`https://community.obsidian.md/assets/community-plugins.json` by its
+`mirror-community-json.yml` workflow, so manual entries are overwritten.
+Submissions happen on the directory website:
+
+1. Sign in at <https://community.obsidian.md> with an Obsidian account. (The
+   GitHub account alone is not enough — a human signs in; an agent cannot do
+   this step for the user.)
+2. Link the GitHub account that owns the repository; the directory uses it to
+   verify ownership.
+3. Choose **Add plugin**, point at the repository URL, confirm the description.
+   The directory reads `manifest.json` at the HEAD of the default branch.
+4. Review is automated. Address what it reports, bump the version, publish a new
+   GitHub release; the directory picks new releases up on its own. Only the
+   first submission is manual.
+
+Before submitting, at minimum: `manifest.json`, `README.md` and `LICENSE` at the
+repository root; a release whose tag equals the manifest version with the three
+assets; a truthful `minAppVersion`; no `fundingUrl` unless donations are
+accepted; description punctuation and length inside the limits. The review
+enforces the [submission requirements](https://docs.obsidian.md/community-directory/submission-requirements-for-plugins)
+and the [developer policies](https://docs.obsidian.md/Developer+policies).
 
 ## Developer policies (review blockers)
 

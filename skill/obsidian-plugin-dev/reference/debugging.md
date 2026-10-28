@@ -35,6 +35,29 @@ also fine: build -> deploy (copy the three artifacts) -> toggle the plugin off
 and on (or restart the app). The `reload` tool wraps the CLI route when the app
 is reachable.
 
+## DevTools protocol probing
+
+If the CLI is unavailable or you need DOM-level evidence, launch Obsidian with
+`--remote-debugging-port=9222` and talk to it over CDP. `Runtime.evaluate` sees
+the `app` global (vault, plugins, workspace), so you can inspect plugin
+instances, toggle them and read the real DOM. Two facts save hours:
+
+- the renderer is often hidden (`document.hidden === true`) and rAF is paused,
+  so call `Page.bringToFront` + `Emulation.setFocusEmulationEnabled` before
+  waiting for UI;
+- element rects are 0 until the view is rendered — poll, don't guess.
+
+See `verification.md` (L3.5) for the full scripted-UI loop and cleanup rules.
+
+## Plugins that extend Canvas
+
+Canvas has no public extension API; plugins that add node chrome (cards,
+collapsible nodes, extra menus) all rely on internals. The verified map of what
+works and what does not — unknown-field round-trip, no custom node types, DOM
+class hooks, no node lifecycle events, click/blocker behaviour, per-document
+listeners for pop-outs, and why DOM sync must use a timer instead of rAF — is in
+`canvas.md`. Read it before touching `leaf.view.canvas` or `node.getData()`.
+
 ## Symptom -> action
 
 | Symptom | Likely cause | First move |

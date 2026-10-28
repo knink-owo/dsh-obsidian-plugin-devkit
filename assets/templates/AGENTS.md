@@ -42,6 +42,25 @@ to be observed in a running Obsidian instance; see "Verification" below.
   `cachedRead` + `modify` when editing files.
 - Do not use `electron.remote`, `app` internals, or force window focus.
 
+## Undocumented Obsidian internals
+
+The default is to stay on the public `obsidian` API. Some features (Canvas node
+chrome, custom editor panes, workspace layout tricks) have no public API. If you
+must reach into internals, do all of it deliberately:
+
+- Keep every internal access in one module (for example `src/internals.ts`) with
+  narrow types and feature detection (`if (typeof view.getViewType === 'function')`).
+  Never spread raw internal objects through the codebase.
+- Document the allowlist in this file: which members, why, and how the plugin
+  behaves when they are missing (degrade chrome, keep data).
+- Prefer adding CSS classes / using existing DOM over injecting DOM or patching
+  prototypes. A plugin must never break Canvas' own saving or interaction.
+- State in the README that the plugin relies on undocumented internals and may
+  need an update after an Obsidian release.
+- For Canvas specifically, read the skill's `reference/canvas.md`: custom node
+  types are dropped, extra node data round-trips through `unknownData`, and DOM
+  sync must not depend on `requestAnimationFrame`.
+
 ## Submission rules that are easy to violate
 
 - `id`: lowercase letters, digits and hyphens only; no "obsidian"; must not end in "plugin".
@@ -50,6 +69,8 @@ to be observed in a running Obsidian instance; see "Verification" below.
 - `isDesktopOnly` must be present and accurate.
 - GitHub release tag must equal `manifest.json.version`, with `main.js`,
   `manifest.json` and `styles.css` attached.
+- Publishing is done through <https://community.obsidian.md> (Obsidian account +
+  linked GitHub account), not a pull request against `obsidianmd/obsidian-releases`.
 
 ## Verification before calling work done
 

@@ -41,6 +41,44 @@ compatibility — the bundle runs against stubs, not Obsidian.
   command to a human or CI, and remember the harness uses an isolated config
   dir and a throwaway vault copy, not the developer's vaults.
 
+## L3.5 — scripted UI probing (DevTools / CDP)
+
+When a human cannot click through every flow, drive the running app over the
+Chrome DevTools Protocol. This is still *scripted observation*, not proof of a
+good UX: keep the screenshot and the raw values.
+
+- Start the app with `--remote-debugging-port=9222` (and, if needed, a separate
+  `--user-data-dir`); ask before restarting a user's app, and never kill it
+  mid-save. `http://127.0.0.1:9222/json` lists the targets; `Runtime.evaluate`
+  has access to the `app` global.
+- Drive with a small scenario runner: ordered `eval` / `wait` / `click` /
+  `drag` / `key` / `screenshot` steps, coordinates resolved from fresh
+  `getBoundingClientRect()` results on every action.
+- **The page is hidden unless you say otherwise.** `document.hidden` is often
+  `true` for a CDP target, which pauses `requestAnimationFrame` and throttles
+  timers; waits then look like hangs. Call `Page.bringToFront` and
+  `Emulation.setFocusEmulationEnabled` before asserting.
+- **Rects are 0 until render.** A canvas/leaf that was just opened or
+  zoom-to-fitted has not laid out its nodes yet. Poll `isConnected` and a
+  non-zero rect, or wait for the specific DOM node; do not click computed center
+  coordinates from a stale read.
+- **Prefer element-level events** when synthetic mouse coordinates miss:
+  dispatch `pointerdown` / `pointerup` / `click` directly on the element, then
+  assert plugin state through `app.plugins.plugins[id]` and the visible DOM.
+- **Keyboard shortcuts need the right scope.** `Escape` closing a modal is
+  handled by Obsidian's keymap before window/document capture handlers; a modal
+  that must intercept it has to push a child `Scope` via
+  `app.keymap.pushScope`.
+- **Scope selectors to your plugin's DOM.** Broad selectors such as
+  `.search-input-container input` can hit another view's hidden input: on one
+  real run this wrote a filter into the file explorer's search box, hid the whole
+  file tree, and the filter was persisted into `workspace.json` and survived a
+  restart. Always query inside your own classes (`my-plugin-*`) and verify the
+  target element belongs to the expected view.
+- **Clean up after the run**: remove temporary nodes/notes/exports, detach
+  pop-out leaves, reopen the user's original files, and re-check the visible UI
+  (a screenshot) before reporting success.
+
 ## L4 — human/UI
 
 The actual behaviour: commands appear, the modal opens, settings persist,

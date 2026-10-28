@@ -397,3 +397,20 @@ schema must be a JSON Schema of 'type: "object"', got 'type: null'.
 4. 旧插件移除后宿主一度进入 inactive 状态（`sessionProjections` 不可用），需重启桌面应用恢复；期间所有工具调用失败，说明“移除正在被当前会话使用的 bundle”是有风险操作。
 
 **仍未完成**：云端 GitHub 仓库 `knink-owo/dsh-obsidian-plugin-devkit` 仍为空，需用户在有 GitHub 凭据的终端 push；profile `package.json` 里可能残留 `link:` 依赖行（bundle 行已移除，可后续用 `dsh plugin --profile desktop remove` 清理）；npm 发布属 M4。
+
+## 16. v1.1.0：skill 内容补强（release 校验 / community.obsidian.md / Canvas 与 CDP）
+
+**背景**：v1.0.0 之后，已在 `~/.dsh/skills/obsidian-plugin-dev` 里对 skill 文档做过一轮实战补强（devkit 运行时仍 1.0.0）。这一轮把该补强反向合并回仓库并发布为 v1.1.0。
+
+**内容变化**（仓库 `skill/obsidian-plugin-dev/` 与 `assets/templates/AGENTS.md`）：
+
+1. `SKILL.md`：步 6 改为「验证 release 资产而非 Actions UI」——下载三个资产比对 sha256，并记录 `queued` 幽灵 run；步 7 改为 community.obsidian.md 提交流程（`obsidianmd/obsidian-releases` 只是 hourly 镜像，PR 会被覆盖，自动审查看默认分支 HEAD）；hard rules 新增两条：禁止向 `obsidianmd/obsidian-releases` 提 PR；脚本化 UI 测试不得遗留 stray nodes/notes/tabs/pop-outs/filters/plugin toggles，收尾须截图复验。Reference 列表新增 `reference/canvas.md`。
+2. 新增 `reference/canvas.md`（98 行）：基于 Obsidian 1.14.4 实测的 Canvas 内部机制——unknownData 往返、`setData` 全量替换且只收单参数、自定义 `type` 被 `importData()` 丢弃、`requestSave` 防抖与 history 语义、DOM 无 node id 属性、CSS 优先于 DOM 注入、MutationObserver + setTimeout（禁 rAF，后台窗口会冻结）、pop-out 每 document 监听、Escape 需 `app.keymap.pushScope`、CDP 下 rect 为 0 与隐藏页面限流。
+3. `reference/submission.md`：Release 扩为 5 步（版本同步、tag = manifest version、三个资产、CI 形态、哈希校验取代 Actions 状态）；新增 community.obsidian.md 提交段与 review blockers。
+4. `reference/verification.md`：新增 L3.5「scripted UI probing (DevTools/CDP)」，含真实事故——宽泛选择器 `.search-input-container input` 把过滤词写进文件列表搜索框并持久化到 `workspace.json`，重启后文件树仍被隐藏。
+5. `reference/debugging.md`：新增 CDP 调试指针（指向 L3.5）与 Canvas 插件节（指向 `canvas.md`）。
+6. `assets/templates/AGENTS.md`：新增「Undocumented Obsidian internals」段（集中封装/feature detect/README 声明）与「Submission rules that are easy to violate」段（含 community.obsidian.md 渠道）。
+
+**同步机制**：`npm run build` 的 postbuild 会执行 `scripts/sync-skill-runtime.mjs`，把 `lib/*.js`、`assets/templates/`、LICENSE 重新打包进 `skill/obsidian-plugin-dev/scripts/`，并按根 `package.json` 版本重写 `scripts/package.json` 与 README。本轮同时修正 `install-skill` 的提示文案（改为 `node scripts/devkit.mjs`）。
+
+**验证**：`npm run clean && npm run build` 后运行时 19 个 JS 模块、版本 1.1.0；`npm test` 89/89 通过；`install-skill --force` 重装后 `diff -rq` 与仓库 `skill/obsidian-plugin-dev/` 完全一致（忽略宿主 lock 文件），`node scripts/devkit.mjs --version` → 1.1.0。

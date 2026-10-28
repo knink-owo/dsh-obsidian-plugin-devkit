@@ -12,8 +12,11 @@ This repository ships two things that share one core:
    safety boundaries (never cold-start Obsidian, never steal focus, never touch a vault you were not
    given). Its `scripts/` folder carries the runtime, so installing the skill needs no global CLI.
 
-> Status: **v1.0.0** — runtime + self-contained skill. The former DSH (Cordis) plugin bundle is
-> archived in [`archive/plugin/`](archive/plugin/README.md) at git tag `archive-plugin-v0.5.0`.
+> Status: **v1.1.0** — runtime + self-contained skill. v1.1.0 is a content pass on the skill:
+> verify release assets instead of the Actions UI (`queued` ghost runs), submit through
+> community.obsidian.md instead of a pull request, and two new references — Canvas internals and
+> L3.5 scripted UI probing over CDP. The former DSH (Cordis) plugin bundle is archived in
+> [`archive/plugin/`](archive/plugin/README.md) at git tag `archive-plugin-v0.5.0`.
 
 ## Why scripts inside the skill
 
@@ -119,9 +122,10 @@ A green build proves almost nothing. The skill enforces four layers:
 
 [`skill/obsidian-plugin-dev/`](skill/obsidian-plugin-dev/SKILL.md) is self-contained: `SKILL.md` is
 the workflow and the hard rules, `scripts/` is the vendored runtime, `reference/cli.md` is the complete
-command fallback reference, and `reference/{submission,settings,lifecycle,verification,debugging}.md`
-carry the official rules and the API patterns. Copy the folder into a skills directory; the agent
-loads the reference files on demand. There is no `install-skill` step and no global CLI required.
+command fallback reference, and `reference/{submission,settings,lifecycle,verification,debugging,canvas}.md`
+carry the official rules, the API patterns and the verified Canvas internals. Copy the folder into a
+skills directory; the agent loads the reference files on demand. There is no `install-skill` step and
+no global CLI required.
 
 > Legacy note: the built `lib/commandline.js` still accepts an `install-skill` subcommand for older
 > devkit users, and some report strings still say `obsidian-devkit`. The supported path is
@@ -168,8 +172,10 @@ per-file child process; the suites exercise the library directly through the `Fs
 
 ## Roadmap
 
-- **v1.0.0 (this)** — CLI (10 commands) + agent skill; the DSH plugin bundle archived.
-- **v1.1** — API-reference resource for the Obsidian TypeScript API (offline search for the agent),
+- **v1.0.0** — CLI (10 commands) + agent skill; the DSH plugin bundle archived.
+- **v1.1.0 (this)** — skill content pass: release-asset hash verification and `queued` ghost runs,
+  community.obsidian.md submission flow, `reference/canvas.md`, L3.5 scripted UI probing over CDP.
+- **v1.2** — API-reference resource for the Obsidian TypeScript API (offline search for the agent),
   submission automation.
 - **Later** — npm publish, GitHub release workflow.
 
